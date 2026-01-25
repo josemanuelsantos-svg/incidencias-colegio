@@ -50,7 +50,7 @@ import {
   serverTimestamp 
 } from "firebase/firestore";
 
-// --- Configuración de Firebase (TUS CLAVES REALES) ---
+// --- Configuración de Firebase ---
 const firebaseConfig = {
   apiKey: "AIzaSyCVmrdGbTN6q5o_-DMTS679_X66iDiQW8c",
   authDomain: "incidencias-colegio.firebaseapp.com",
@@ -63,7 +63,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-// Usamos un ID fijo para organizar los datos en tu base de datos
 const appId = 'datos_colegio';
 
 // --- Datos Estáticos ---
@@ -125,9 +124,6 @@ const COMMON_ISSUES = {
 };
 
 // Función auxiliar para formatear fechas
-/**
- * @param {any} timestamp
- */
 const formatDate = (timestamp) => {
   if (!timestamp) return '';
   const date = new Date(timestamp.seconds * 1000);
@@ -140,9 +136,6 @@ const formatDate = (timestamp) => {
 };
 
 // Función auxiliar para tiempo relativo
-/**
- * @param {any} timestamp
- */
 const getRelativeTime = (timestamp) => {
   if (!timestamp) return '';
   const now = new Date();
@@ -161,28 +154,23 @@ const getRelativeTime = (timestamp) => {
   return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 };
 
-// --- Componente de Cámara Integrada Mejorado ---
-/**
- * @param {{ onCapture: any, onClose: any }} props
- */
+// --- Componente de Cámara Integrada ---
 const CameraModal = ({ onCapture, onClose }) => {
   const videoRef = useRef(null);
   const [error, setError] = useState(null);
   const [stream, setStream] = useState(null);
   const [capturedImage, setCapturedImage] = useState(null);
-  const [showIntro, setShowIntro] = useState(true); // Estado para el aviso inicial
+  const [showIntro, setShowIntro] = useState(true);
 
   useEffect(() => {
     const startCamera = async () => {
       try {
-        // @ts-ignore
         const newStream = await navigator.mediaDevices.getUserMedia({ 
           video: { facingMode: 'environment' }, 
           audio: false
         });
         setStream(newStream);
         if (videoRef.current) {
-          // @ts-ignore
           videoRef.current.srcObject = newStream;
         }
       } catch (err) {
@@ -191,14 +179,12 @@ const CameraModal = ({ onCapture, onClose }) => {
       }
     };
     
-    // Iniciar cámara en segundo plano mientras se muestra el aviso
     if (!capturedImage) {
       startCamera();
     }
 
     return () => {
       if (stream) {
-        // @ts-ignore
         stream.getTracks().forEach(track => track.stop());
       }
     };
@@ -207,17 +193,13 @@ const CameraModal = ({ onCapture, onClose }) => {
   const takePhoto = () => {
     if (!videoRef.current) return;
     const canvas = document.createElement('canvas');
-    // @ts-ignore
     canvas.width = videoRef.current.videoWidth;
-    // @ts-ignore
     canvas.height = videoRef.current.videoHeight;
     const ctx = canvas.getContext('2d');
-    // @ts-ignore
     ctx.drawImage(videoRef.current, 0, 0);
     const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
     
     if (stream) {
-      // @ts-ignore
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
     }
@@ -235,7 +217,6 @@ const CameraModal = ({ onCapture, onClose }) => {
 
   const handleClose = () => {
     if (stream) {
-        // @ts-ignore
         stream.getTracks().forEach(track => track.stop());
     }
     onClose();
@@ -244,7 +225,6 @@ const CameraModal = ({ onCapture, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black z-[60] flex flex-col items-center justify-center animate-in fade-in duration-200">
       
-      {/* Aviso Inicial Superpuesto */}
       {showIntro && !error && !capturedImage && (
         <div className="absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
           <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700 max-w-sm w-full shadow-2xl">
@@ -283,7 +263,6 @@ const CameraModal = ({ onCapture, onClose }) => {
       ) : (
         <>
           <div className="relative w-full h-full flex flex-col">
-            {/* Área de Visualización */}
             <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
                 {capturedImage ? (
                     <img src={capturedImage} alt="Captured" className="w-full h-full object-contain" />
@@ -298,7 +277,6 @@ const CameraModal = ({ onCapture, onClose }) => {
                 )}
             </div>
             
-            {/* Controles (solo visibles si no está el aviso) */}
             {!showIntro && (
               <div className="p-6 bg-black/90 flex justify-center items-center gap-8 pb-10">
                   {capturedImage ? (
@@ -351,9 +329,6 @@ const CameraModal = ({ onCapture, onClose }) => {
 
 // --- Sub-Componentes ---
 
-/**
- * @param {{ updateForm: any, handleNext: any }} props
- */
 const StepCategory = ({ updateForm, handleNext }) => (
   <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
     <h2 className="text-xl font-bold text-gray-800 text-center">Tipo de incidencia</h2>
@@ -382,9 +357,6 @@ const StepCategory = ({ updateForm, handleNext }) => (
   </div>
 );
 
-/**
- * @param {{ formData: any, updateForm: any, handleNext: any, handleBack: any }} props
- */
 const StepLocation = ({ formData, updateForm, handleNext, handleBack }) => {
   const isCommonSpace = formData.building === "Otros Espacios Comunes";
   const handleBuildingChange = (e) => {
@@ -481,17 +453,13 @@ const StepLocation = ({ formData, updateForm, handleNext, handleBack }) => {
   );
 };
 
-/**
- * @param {{ formData: any, updateForm: any, handleBack: any, handleSubmit: any, isSubmitting: any, handleImageUpload: any }} props
- */
 const StepDetails = ({ formData, updateForm, handleBack, handleSubmit, isSubmitting, handleImageUpload }) => {
   const issues = COMMON_ISSUES[formData.category] || [];
   const fileInputRef = useRef(null);
-  const [showCamera, setShowCamera] = useState(false); // Estado para abrir la cámara
+  const [showCamera, setShowCamera] = useState(false);
 
   const handleQuickTag = (text) => updateForm('description', text);
 
-  // Manejador cuando se captura una foto desde el componente CameraModal
   const onCameraCapture = (imgBase64) => {
     updateForm('imageData', imgBase64);
     setShowCamera(false);
@@ -499,7 +467,6 @@ const StepDetails = ({ formData, updateForm, handleBack, handleSubmit, isSubmitt
 
   return (
     <div className="space-y-5 animate-in fade-in slide-in-from-right-8 duration-300">
-      {/* Modal de Cámara condicional */}
       {showCamera && <CameraModal onCapture={onCameraCapture} onClose={() => setShowCamera(false)} />}
 
       <h2 className="text-xl font-bold text-gray-800">Detalles</h2>
@@ -538,7 +505,7 @@ const StepDetails = ({ formData, updateForm, handleBack, handleSubmit, isSubmitt
                 Galería
               </button>
               <button 
-                onClick={() => setShowCamera(true)} // Abrimos el modal de cámara
+                onClick={() => setShowCamera(true)}
                 className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100"
               >
                 <Camera size={16} />
@@ -546,7 +513,6 @@ const StepDetails = ({ formData, updateForm, handleBack, handleSubmit, isSubmitt
               </button>
             </div>
 
-            {/* Input oculto para galería */}
             <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleImageUpload} />
             
             {formData.imageData && (
@@ -592,9 +558,6 @@ const StepDetails = ({ formData, updateForm, handleBack, handleSubmit, isSubmitt
   );
 };
 
-/**
- * @param {{ incidents: any[] }} props
- */
 const Dashboard = ({ incidents }) => {
   const total = incidents.length;
   const pending = incidents.filter(i => i.status === 'pending').length;
@@ -661,9 +624,6 @@ const Dashboard = ({ incidents }) => {
   );
 };
 
-/**
- * @param {{ loading: any, incidents: any, filterStatus: any, setFilterStatus: any, filterText: any, setFilterText: any, filterBuilding: any, setFilterBuilding: any, onlyMyIncidents: any, setOnlyMyIncidents: any, currentUser: any, isAdmin: any, handleAdminAccess: any, exportToCSV: any, setActiveTab: any, initiateResolve: any, reopenIncident: any, initiateDelete: any }} props
- */
 const IncidentsList = ({ 
   loading, 
   incidents, 
@@ -694,7 +654,6 @@ const IncidentsList = ({
 
   return (
     <div className="pb-20 space-y-4">
-      {/* Panel de Admin y Filtros */}
       <div className="bg-white p-4 rounded-xl border shadow-sm space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-gray-800">Filtros y Gestión</h3>
@@ -736,7 +695,6 @@ const IncidentsList = ({
         </div>
       </div>
       
-      {/* Herramientas de Admin (Exportar y Stats) */}
       {isAdmin && (
         <div className="grid grid-cols-2 gap-2">
            <button 
@@ -873,11 +831,9 @@ export default function App() {
   const [resolveNote, setResolveNote] = useState('');
   const [resolvingId, setResolvingId] = useState(null);
 
-  // Estados Modal Borrado
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
 
-  // Estado para Easter Egg
   const [showEasterEgg, setShowEasterEgg] = useState(false);
 
   useEffect(() => {
@@ -937,7 +893,6 @@ export default function App() {
   const handleSubmit = async () => {
     if (!formData.description) return;
 
-    // --- DETECCIÓN DEL HUEVO DE PASCUA ---
     if (
       formData.category === 'maintenance' &&
       formData.floor === 'Planta Baja' &&
@@ -948,7 +903,6 @@ export default function App() {
       setShowEasterEgg(true);
       return; 
     }
-    // -------------------------------------
 
     setIsSubmitting(true);
     
@@ -1071,7 +1025,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-10">
-      {/* Header */}
       <div className="bg-white border-b sticky top-0 z-10 px-4 py-3 shadow-sm">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -1092,7 +1045,6 @@ export default function App() {
                {isAdmin && <button onClick={() => setActiveTab('stats')} className={`px-4 py-1.5 rounded-md text-sm font-medium ${activeTab === 'stats' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>Stats</button>}
              </div>
              
-             {/* Botón Admin en Cabecera */}
              <button 
                 onClick={handleAdminAccess}
                 className={`p-2 rounded-lg transition-colors ${isAdmin ? 'bg-red-50 text-red-600' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'}`}
@@ -1166,14 +1118,12 @@ export default function App() {
         )}
       </main>
 
-      {/* Tab Bar Móvil */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t px-6 py-3 flex justify-around z-20 shadow-lg pb-6">
         <button onClick={() => setActiveTab('new')} className={`flex flex-col items-center gap-1 ${activeTab === 'new' ? 'text-blue-600' : 'text-gray-400'}`}><PlusCircle size={24} /><span className="text-xs">Reportar</span></button>
         <button onClick={() => setActiveTab('list')} className={`flex flex-col items-center gap-1 ${activeTab === 'list' ? 'text-blue-600' : 'text-gray-400'}`}><History size={24} /><span className="text-xs">Historial</span></button>
         {isAdmin && <button onClick={() => setActiveTab('stats')} className={`flex flex-col items-center gap-1 ${activeTab === 'stats' ? 'text-blue-600' : 'text-gray-400'}`}><BarChart3 size={24} /><span className="text-xs">Stats</span></button>}
       </div>
 
-      {/* Modales */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm animate-in zoom-in-95">
@@ -1204,7 +1154,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Modal de Borrado */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm animate-in zoom-in-95">
@@ -1223,7 +1172,6 @@ export default function App() {
         </div>
       )}
       
-      {/* Easter Egg */}
       {showEasterEgg && (
         <div className="fixed inset-0 bg-black z-[70] flex items-center justify-center p-4 animate-in fade-in duration-1000">
           <div className="text-center space-y-6">
@@ -1249,3 +1197,4 @@ export default function App() {
       <div className="text-[1px] text-gray-100 select-none text-center">Хэрэв та үүнийг олвол та бас монголоор ярьдаг гэсэн үг</div>
     </div>
   );
+}
