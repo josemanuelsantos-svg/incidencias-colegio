@@ -65,6 +65,34 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = 'datos_colegio';
 
+// --- Versión de la App ---
+const APP_VERSION = 'v3.9';
+
+// --- UTILIDAD: Compresor de Imágenes ---
+const compressImage = (base64Str, maxWidth = 800, quality = 0.6) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxWidth) {
+        height = (maxWidth / width) * height;
+        width = maxWidth;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(base64Str); // Si falla, devuelve original
+  });
+};
+
 // --- Datos Estáticos ---
 const BUILDINGS = [
   "Pabellón Principal (Portería, Dirección, Bach.)",
@@ -193,11 +221,24 @@ const CameraModal = ({ onCapture, onClose }) => {
   const takePhoto = () => {
     if (!videoRef.current) return;
     const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
+    
+    // Configurar tamaño máximo para comprimir la imagen
+    const MAX_WIDTH = 800;
+    let width = videoRef.current.videoWidth;
+    let height = videoRef.current.videoHeight;
+
+    if (width > MAX_WIDTH) {
+      height = (height * MAX_WIDTH) / width;
+      width = MAX_WIDTH;
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+    
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(videoRef.current, 0, 0);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    ctx.drawImage(videoRef.current, 0, 0, width, height);
+    // Comprimir a JPEG calidad 0.6
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
     
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
@@ -453,7 +494,7 @@ const StepLocation = ({ formData, updateForm, handleNext, handleBack }) => {
   );
 };
 
-const StepDetails = ({ formData, updateForm, handleBack, handleSubmit, isSubmitting, handleImageUpload }) => {
+const StepDetails = ({ formData, updateForm, handleBack, handleSubmit, isSubmitting, handleImageUpload, submitError }) => {
   const issues = COMMON_ISSUES[formData.category] || [];
   const fileInputRef = useRef(null);
   const [showCamera, setShowCamera] = useState(false);
@@ -548,11 +589,19 @@ const StepDetails = ({ formData, updateForm, handleBack, handleSubmit, isSubmitt
         </div>
       </div>
 
-      <div className="flex gap-3 pt-2">
-        <button onClick={handleBack} className="px-4 py-2 border rounded-lg">Atrás</button>
-        <button onClick={handleSubmit} disabled={!formData.description || isSubmitting} className="flex-1 bg-blue-600 text-white rounded-lg shadow-lg flex items-center justify-center gap-2 font-bold disabled:bg-gray-400">
-          {isSubmitting ? 'Enviando...' : 'Enviar Incidencia'} <Send size={16} />
-        </button>
+      <div className="flex flex-col gap-2 pt-2">
+        {submitError && (
+          <div className="p-3 bg-red-50 text-red-700 text-sm rounded-lg flex items-center gap-2">
+            <AlertCircle size={16} />
+            {submitError}
+          </div>
+        )}
+        <div className="flex gap-3">
+          <button onClick={handleBack} className="px-4 py-2 border rounded-lg">Atrás</button>
+          <button onClick={handleSubmit} disabled={!formData.description || isSubmitting} className="flex-1 bg-blue-600 text-white rounded-lg shadow-lg flex items-center justify-center gap-2 font-bold disabled:bg-gray-400">
+            {isSubmitting ? 'Enviando...' : 'Enviar Incidencia'} <Send size={16} />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -818,6 +867,7 @@ export default function App() {
     reporterName: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null); // Nuevo estado para errores
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -887,8 +937,10 @@ export default function App() {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        updateForm('imageData', reader.result);
+      reader.onloadend = async () => {
+        // Comprimir imagen al subir archivo también
+        const compressed = await compressImage(reader.result);
+        updateForm('imageData', compressed);
       };
       reader.readAsDataURL(file);
     }
@@ -896,6 +948,7 @@ export default function App() {
 
   const handleSubmit = async () => {
     if (!formData.description) return;
+    setSubmitError(null);
 
     // --- DETECCIÓN DEL HUEVO DE PASCUA ---
     if (
@@ -935,6 +988,7 @@ export default function App() {
       }, 2000);
     } catch (error) {
       console.error(error);
+      setSubmitError("Error al enviar. ¿Es la foto muy grande o hay problemas de conexión?");
       setIsSubmitting(false);
     }
   };
@@ -1089,6 +1143,7 @@ export default function App() {
                  handleSubmit={handleSubmit} 
                  isSubmitting={isSubmitting} 
                  handleImageUpload={handleImageUpload}
+                 submitError={submitError}
                />
              )}
              {step === 4 && (
@@ -1206,6 +1261,9 @@ export default function App() {
           </div>
         </div>
       )}
+      <div className="text-xs text-gray-300 text-center pb-20 md:pb-4 opacity-50">
+        {APP_VERSION}
+      </div>
       <div className="text-[1px] text-gray-100 select-none text-center">Хэрэв та үүнийг олвол та бас монголоор ярьдаг гэсэн үг</div>
     </div>
   );
