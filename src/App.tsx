@@ -654,6 +654,7 @@ const IncidentsList = ({
 
   return (
     <div className="pb-20 space-y-4">
+      {/* Panel de Admin y Filtros */}
       <div className="bg-white p-4 rounded-xl border shadow-sm space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-gray-800">Filtros y Gestión</h3>
@@ -695,6 +696,7 @@ const IncidentsList = ({
         </div>
       </div>
       
+      {/* Herramientas de Admin (Exportar y Stats) */}
       {isAdmin && (
         <div className="grid grid-cols-2 gap-2">
            <button 
@@ -831,9 +833,11 @@ export default function App() {
   const [resolveNote, setResolveNote] = useState('');
   const [resolvingId, setResolvingId] = useState(null);
 
+  // Estados Modal Borrado
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
 
+  // Estado para Easter Egg
   const [showEasterEgg, setShowEasterEgg] = useState(false);
 
   useEffect(() => {
@@ -893,6 +897,7 @@ export default function App() {
   const handleSubmit = async () => {
     if (!formData.description) return;
 
+    // --- DETECCIÓN DEL HUEVO DE PASCUA ---
     if (
       formData.category === 'maintenance' &&
       formData.floor === 'Planta Baja' &&
@@ -903,6 +908,7 @@ export default function App() {
       setShowEasterEgg(true);
       return; 
     }
+    // -------------------------------------
 
     setIsSubmitting(true);
     
@@ -1025,6 +1031,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-10">
+      {/* Header */}
       <div className="bg-white border-b sticky top-0 z-10 px-4 py-3 shadow-sm">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -1045,6 +1052,7 @@ export default function App() {
                {isAdmin && <button onClick={() => setActiveTab('stats')} className={`px-4 py-1.5 rounded-md text-sm font-medium ${activeTab === 'stats' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>Stats</button>}
              </div>
              
+             {/* Botón Admin en Cabecera */}
              <button 
                 onClick={handleAdminAccess}
                 className={`p-2 rounded-lg transition-colors ${isAdmin ? 'bg-red-50 text-red-600' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'}`}
@@ -1058,7 +1066,7 @@ export default function App() {
 
       <main className="max-w-2xl mx-auto p-4 md:p-6">
         {activeTab === 'new' && (
-          <div className="max-w-lg mx-auto bg-white md:shadow-lg md:rounded-2xl md:p-8 md:border min-h-[50vh]">
+          <div className="max-w-lg mx-auto bg-white md:shadow-lg md:rounded-2xl md:p-8 md:border min-h-[50vh] pb-24 md:pb-8">
              {step === 1 && (
                <StepCategory 
                  updateForm={updateForm} 
@@ -1118,12 +1126,14 @@ export default function App() {
         )}
       </main>
 
+      {/* Tab Bar Móvil */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t px-6 py-3 flex justify-around z-20 shadow-lg pb-6">
         <button onClick={() => setActiveTab('new')} className={`flex flex-col items-center gap-1 ${activeTab === 'new' ? 'text-blue-600' : 'text-gray-400'}`}><PlusCircle size={24} /><span className="text-xs">Reportar</span></button>
         <button onClick={() => setActiveTab('list')} className={`flex flex-col items-center gap-1 ${activeTab === 'list' ? 'text-blue-600' : 'text-gray-400'}`}><History size={24} /><span className="text-xs">Historial</span></button>
         {isAdmin && <button onClick={() => setActiveTab('stats')} className={`flex flex-col items-center gap-1 ${activeTab === 'stats' ? 'text-blue-600' : 'text-gray-400'}`}><BarChart3 size={24} /><span className="text-xs">Stats</span></button>}
       </div>
 
+      {/* Modales */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm animate-in zoom-in-95">
@@ -1154,6 +1164,7 @@ export default function App() {
         </div>
       )}
 
+      {/* Modal de Borrado */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm animate-in zoom-in-95">
@@ -1172,6 +1183,7 @@ export default function App() {
         </div>
       )}
       
+      {/* Easter Egg */}
       {showEasterEgg && (
         <div className="fixed inset-0 bg-black z-[70] flex items-center justify-center p-4 animate-in fade-in duration-1000">
           <div className="text-center space-y-6">
