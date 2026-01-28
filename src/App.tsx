@@ -66,7 +66,7 @@ const db = getFirestore(app);
 const appId = 'datos_colegio';
 
 // --- Versión de la App ---
-const APP_VERSION = 'v3.9';
+const APP_VERSION = 'v4.2';
 
 // --- UTILIDAD: Compresor de Imágenes ---
 const compressImage = (base64Str, maxWidth = 800, quality = 0.6) => {
@@ -114,6 +114,10 @@ const COMMON_SPACES_LIST = [
   "Sala de Psicomotricidad",
   "Enfermería",
   "Sala de Profesores",
+  "Gimnasio",
+  "Gimnasio bajo el pádel",
+  "Parque infantil",
+  "Campo de pádel",
   "Otro"
 ];
 
@@ -421,10 +425,106 @@ const StepLocation = ({ formData, updateForm, handleNext, handleBack }) => {
   }, [formData.building]);
 
   const availableRooms = useMemo(() => {
+    // 1. Espacios Comunes
     if (isCommonSpace) return COMMON_SPACES_LIST;
 
-    if (formData.building === "Pirámide (3º-6º EP)") {
-      if (formData.floor === "1ª Planta") {
+    const building = formData.building;
+    const floor = formData.floor;
+
+    // 2. Pabellón Principal (Portería, Dirección, Bach.)
+    if (building === "Pabellón Principal (Portería, Dirección, Bach.)") {
+      if (floor === "Planta Baja") {
+        return [
+          "1º BTO A", "1º BTO B",
+          "Orientación",
+          "Portería", "Dirección", "Pastoral",
+          "Tutoría", "Pasillo / Baños", "Otro"
+        ];
+      }
+      if (floor === "1ª Planta") {
+        return [
+          "2º BTO A", "2º BTO B",
+          "Aula Auxiliar", "Tutoría",
+          "Pasillo / Baños", "Otro"
+        ];
+      }
+      if (floor === "2ª Planta") {
+        return [
+          "Laboratorio", "Pasillo / Baños", "Otro"
+        ];
+      }
+    }
+
+    // 3. Pabellón 1 (3º y 4º ESO)
+    if (building === "Pabellón 1 (3º y 4º ESO)") {
+      if (floor === "Planta Baja") {
+        return [
+          "Despacho", "Aula Auxiliar",
+          "Sala Múltiple", "Tutoría",
+          "Pasillo / Baños", "Otro"
+        ];
+      }
+      if (floor === "1ª Planta") {
+        return [
+          "4º ESO A", "4º ESO B", "4º ESO C",
+          "Tutoría", "Pasillo / Baños", "Otro"
+        ];
+      }
+      if (floor === "2ª Planta") {
+        return [
+          "3º ESO A", "3º ESO B", "3º ESO C",
+          "Tutoría", "Pasillo / Baños", "Otro"
+        ];
+      }
+    }
+
+    // 4. Pabellón 2 (1º y 2º ESO)
+    if (building === "Pabellón 2 (1º y 2º ESO)") {
+      if (floor === "Planta Baja") {
+        return [
+          "Aula Diversificación", "Aula Desdoble",
+          "Tutoría", "Pasillo / Baños", "Otro"
+        ];
+      }
+      if (floor === "1ª Planta") {
+        return [
+          "2º ESO A", "2º ESO B", "2º ESO C",
+          "Tutoría", "Pasillo / Baños", "Otro"
+        ];
+      }
+      if (floor === "2ª Planta") {
+        return [
+          "1º ESO A", "1º ESO B", "1º ESO C",
+          "Tutoría", "Pasillo / Baños", "Otro"
+        ];
+      }
+    }
+
+    // 5. Pabellón 3 (5 años, 1º y 2º EP)
+    if (building === "Pabellón 3 (5 años, 1º y 2º EP)") {
+      if (floor === "Planta Baja") {
+        return [
+          "5 años A", "5 años B", "5 años C",
+          "Pasillo / Baños", "Otro"
+        ];
+      }
+      if (floor === "1ª Planta") {
+        return [
+          "1º EP A", "1º EP B", "1º EP C",
+          "Tutoría", "Pasillo / Baños", "Otro"
+        ];
+      }
+      if (floor === "2ª Planta") {
+        return [
+          "2º EP A", "2º EP B", "2º EP C",
+          "Tutoría", "Pasillo / Baños", "Otro"
+        ];
+      }
+    }
+
+    // 6. Pirámide (3º-6º EP)
+    if (building === "Pirámide (3º-6º EP)") {
+      if (floor === "1ª Planta") {
         return [
           "4º EP A", "4º EP C", 
           "5º EP A", "5º EP B", "5º EP C", 
@@ -432,7 +532,7 @@ const StepLocation = ({ formData, updateForm, handleNext, handleBack }) => {
           "Pasillo / Baños", "Otro"
         ];
       }
-      if (formData.floor === "2ª Planta") {
+      if (floor === "2ª Planta") {
         return [
           "Sala PT", "4º EP B",
           "3º EP A", "3º EP B", "3º EP C",
@@ -442,12 +542,23 @@ const StepLocation = ({ formData, updateForm, handleNext, handleBack }) => {
       }
     }
 
-    if (formData.building === "Pabellón 3 y 4 años") {
-      if (formData.floor === "Planta Baja") {
-        return ["Aula A", "Aula B", "Aula C", "Otro"];
+    // 7. Pabellón 3 y 4 años
+    if (building === "Pabellón 3 y 4 años") {
+      if (floor === "Planta Baja") {
+        return [
+          "3 años A", "3 años B", "3 años C", 
+          "Otro" // Baño incluido en aula
+        ];
+      }
+      if (floor === "1ª Planta") {
+        return [
+          "4 años A", "4 años B", "4 años C",
+          "Pasillo / Baños", "Otro"
+        ];
       }
     }
 
+    // Default genérico
     return ["Aula A", "Aula B", "Aula C", "Tutoría", "Pasillo / Baños", "Otro"];
   }, [formData.building, formData.floor, isCommonSpace]);
 
@@ -819,6 +930,9 @@ const IncidentsList = ({
               
               <div className="flex flex-wrap gap-2 text-xs text-gray-500 mt-2">
                 <span className="flex items-center gap-1 bg-white border px-2 py-1 rounded"><Building size={10} /> {incident.building}</span>
+                {incident.floor && incident.floor !== 'N/A' && (
+                  <span className="flex items-center gap-1 bg-white border px-2 py-1 rounded"><MapPin size={10} /> {incident.floor}</span>
+                )}
                 <span className="flex items-center gap-1 bg-white border px-2 py-1 rounded"><span className="font-bold">{incident.room}</span></span>
                 {incident.imageData && (
                    <span className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-100 cursor-pointer group relative">
@@ -1194,7 +1308,7 @@ export default function App() {
           <div className="bg-white rounded-xl p-6 w-full max-w-sm animate-in zoom-in-95">
             <h3 className="text-lg font-bold mb-4">Acceso Mantenimiento</h3>
             <form onSubmit={submitPin}>
-              <input type="password" placeholder="PIN (1274)" value={adminPin} onChange={e=>setAdminPin(e.target.value)} className="w-full p-3 border rounded-lg mb-4 text-center text-2xl tracking-widest" autoFocus />
+              <input type="password" placeholder="PIN" value={adminPin} onChange={e=>setAdminPin(e.target.value)} className="w-full p-3 border rounded-lg mb-4 text-center text-2xl tracking-widest" autoFocus />
               {loginError && <p className="text-red-500 text-sm mb-4 text-center">PIN Incorrecto</p>}
               <div className="flex gap-2">
                 <button type="button" onClick={() => setShowAuthModal(false)} className="flex-1 py-3 border rounded-lg">Cancelar</button>
