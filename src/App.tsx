@@ -30,7 +30,9 @@ import {
   RefreshCcw,
   Check,
   RotateCcw,
-  Video
+  Video,
+  Link as LinkIcon,
+  QrCode
 } from 'lucide-react';
 import { initializeApp } from "firebase/app";
 import { 
@@ -66,7 +68,7 @@ const db = getFirestore(app);
 const appId = 'datos_colegio';
 
 // --- Versión de la App ---
-const APP_VERSION = 'v4.2';
+const APP_VERSION = 'v4.3';
 
 // --- UTILIDAD: Compresor de Imágenes ---
 const compressImage = (base64Str, maxWidth = 800, quality = 0.6) => {
@@ -458,8 +460,9 @@ const StepLocation = ({ formData, updateForm, handleNext, handleBack }) => {
     // 3. Pabellón 1 (3º y 4º ESO)
     if (building === "Pabellón 1 (3º y 4º ESO)") {
       if (floor === "Planta Baja") {
+        // CORRECCION APLICADA v4.3
         return [
-          "Despacho", "Aula Auxiliar",
+          "Sala Chromebook", "Clase de Diversificación",
           "Sala Múltiple", "Tutoría",
           "Pasillo / Baños", "Otro"
         ];
@@ -481,9 +484,10 @@ const StepLocation = ({ formData, updateForm, handleNext, handleBack }) => {
     // 4. Pabellón 2 (1º y 2º ESO)
     if (building === "Pabellón 2 (1º y 2º ESO)") {
       if (floor === "Planta Baja") {
+        // CORRECCION APLICADA v4.3
         return [
-          "Aula Diversificación", "Aula Desdoble",
-          "Tutoría", "Pasillo / Baños", "Otro"
+          "Aula Diversificación", "Aula Desdoble 1", "Aula Desdoble 2",
+          "Pasillo / Baños", "Otro"
         ];
       }
       if (floor === "1ª Planta") {
@@ -812,6 +816,18 @@ const IncidentsList = ({
     return matchStatus && matchText && matchBuilding && matchMine;
   });
 
+  const copyLink = (building, floor, room) => {
+    const params = new URLSearchParams();
+    params.set('b', building);
+    if(floor && floor !== 'N/A') params.set('f', floor);
+    if(room) params.set('r', room);
+    const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    
+    navigator.clipboard.writeText(url).then(() => {
+        alert("¡Enlace copiado! Puedes crear un QR con él.");
+    });
+  };
+
   return (
     <div className="pb-20 space-y-4">
       {/* Panel de Admin y Filtros */}
@@ -899,20 +915,31 @@ const IncidentsList = ({
                     )}
                  </div>
                  
-                 {isAdmin ? (
-                   <div className="flex gap-2">
-                     {incident.status === 'pending' ? (
-                        <button onClick={() => initiateResolve(incident.id)} className="text-xs font-bold px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-sm">✓ Resolver</button>
-                     ) : (
-                        <button onClick={() => reopenIncident(incident.id)} className="text-xs font-bold px-3 py-1.5 bg-white border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50">Reabrir</button>
-                     )}
-                     <button onClick={() => initiateDelete(incident.id)} className="p-1.5 text-red-500 bg-red-50 rounded-lg border border-red-100"><Trash2 size={16} /></button>
-                   </div>
-                 ) : (
-                   <span className={`text-xs px-2 py-1 rounded-full font-medium flex items-center gap-1 ${incident.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {incident.status === 'resolved' ? <CheckCircle2 size={12} /> : <Clock size={12} />} {incident.status === 'resolved' ? 'Resuelto' : 'Pendiente'}
-                   </span>
-                 )}
+                 <div className="flex gap-2">
+                    {isAdmin && (
+                        <button 
+                            onClick={() => copyLink(incident.building, incident.floor, incident.room)}
+                            className="p-1.5 text-gray-500 hover:text-blue-600 bg-white/50 rounded-lg border border-gray-200"
+                            title="Copiar enlace para QR"
+                        >
+                            <QrCode size={16} />
+                        </button>
+                    )}
+                    {isAdmin ? (
+                       <>
+                         {incident.status === 'pending' ? (
+                            <button onClick={() => initiateResolve(incident.id)} className="text-xs font-bold px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-sm">✓ Resolver</button>
+                         ) : (
+                            <button onClick={() => reopenIncident(incident.id)} className="text-xs font-bold px-3 py-1.5 bg-white border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50">Reabrir</button>
+                         )}
+                         <button onClick={() => initiateDelete(incident.id)} className="p-1.5 text-red-500 bg-red-50 rounded-lg border border-red-100"><Trash2 size={16} /></button>
+                       </>
+                    ) : (
+                       <span className={`text-xs px-2 py-1 rounded-full font-medium flex items-center gap-1 ${incident.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          {incident.status === 'resolved' ? <CheckCircle2 size={12} /> : <Clock size={12} />} {incident.status === 'resolved' ? 'Resuelto' : 'Pendiente'}
+                       </span>
+                    )}
+                 </div>
               </div>
 
               <div className="mb-1">
@@ -981,7 +1008,7 @@ export default function App() {
     reporterName: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState(null); // Nuevo estado para errores
+  const [submitError, setSubmitError] = useState(null); 
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -1003,6 +1030,29 @@ export default function App() {
 
   // Estado para Easter Egg
   const [showEasterEgg, setShowEasterEgg] = useState(false);
+
+  // --- Check URL Params for Magic Link ---
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pBuilding = params.get('b');
+    const pFloor = params.get('f');
+    const pRoom = params.get('r');
+
+    if (pBuilding) {
+      setFormData(prev => ({
+        ...prev,
+        building: pBuilding,
+        floor: pFloor || 'N/A',
+        room: pRoom || ''
+      }));
+      // Si hay ubicación completa, saltamos directamente al paso 3 (Detalles)
+      if (pRoom) {
+         setStep(3);
+      } else {
+         setStep(2);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -1052,7 +1102,6 @@ export default function App() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        // Comprimir imagen al subir archivo también
         const compressed = await compressImage(reader.result);
         updateForm('imageData', compressed);
       };
@@ -1097,6 +1146,8 @@ export default function App() {
         setFormData(prev => ({
           category: '', building: '', floor: '', room: '', description: '', priority: 'normal', imageData: null, reporterName: prev.reporterName
         }));
+        // Limpiamos la URL por si venía de un QR
+        window.history.replaceState({}, document.title, window.location.pathname);
         setActiveTab('list');
         setIsSubmitting(false);
       }, 2000);
