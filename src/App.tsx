@@ -68,7 +68,7 @@ const db = getFirestore(app);
 const appId = 'datos_colegio';
 
 // --- Versión de la App ---
-const APP_VERSION = 'v4.3';
+const APP_VERSION = 'v4.4';
 
 // --- UTILIDAD: Compresor de Imágenes ---
 const compressImage = (base64Str, maxWidth = 800, quality = 0.6) => {
@@ -117,7 +117,7 @@ const COMMON_SPACES_LIST = [
   "Enfermería",
   "Sala de Profesores",
   "Gimnasio",
-  "Gimnasio bajo el pádel",
+  "Gimnasio bajo la piscina",
   "Parque infantil",
   "Campo de pádel",
   "Otro"
