@@ -68,7 +68,7 @@ const db = getFirestore(app);
 const appId = 'datos_colegio';
 
 // --- Versión de la App ---
-const APP_VERSION = 'v4.4';
+const APP_VERSION = 'v4.5';
 
 // --- UTILIDAD: Compresor de Imágenes ---
 const compressImage = (base64Str, maxWidth = 800, quality = 0.6) => {
@@ -97,10 +97,10 @@ const compressImage = (base64Str, maxWidth = 800, quality = 0.6) => {
 
 // --- Datos Estáticos ---
 const BUILDINGS = [
-  "Pabellón Principal (Portería, Dirección, Bach.)",
-  "Pabellón 1 (3º y 4º ESO)",
-  "Pabellón 2 (1º y 2º ESO)",
-  "Pabellón 3 (5 años, 1º y 2º EP)",
+  "Pabellón I (Portería, Dirección, Bach.)",
+  "Pabellón II (3º y 4º ESO)",
+  "Pabellón III (1º y 2º ESO)",
+  "Pabellón IV (5 años, 1º y 2º EP)",
   "Pirámide (3º-6º EP)",
   "Pabellón 3 y 4 años",
   "Otros Espacios Comunes"
@@ -433,8 +433,8 @@ const StepLocation = ({ formData, updateForm, handleNext, handleBack }) => {
     const building = formData.building;
     const floor = formData.floor;
 
-    // 2. Pabellón Principal (Portería, Dirección, Bach.)
-    if (building === "Pabellón Principal (Portería, Dirección, Bach.)") {
+    // 2. Pabellón I (Portería, Dirección, Bach.)
+    if (building === "Pabellón I (Portería, Dirección, Bach.)") {
       if (floor === "Planta Baja") {
         return [
           "1º BTO A", "1º BTO B",
@@ -457,10 +457,9 @@ const StepLocation = ({ formData, updateForm, handleNext, handleBack }) => {
       }
     }
 
-    // 3. Pabellón 1 (3º y 4º ESO)
-    if (building === "Pabellón 1 (3º y 4º ESO)") {
+    // 3. Pabellón II (3º y 4º ESO)
+    if (building === "Pabellón II (3º y 4º ESO)") {
       if (floor === "Planta Baja") {
-        // CORRECCION APLICADA v4.3
         return [
           "Sala Chromebook", "Clase de Diversificación",
           "Sala Múltiple", "Tutoría",
@@ -481,10 +480,9 @@ const StepLocation = ({ formData, updateForm, handleNext, handleBack }) => {
       }
     }
 
-    // 4. Pabellón 2 (1º y 2º ESO)
-    if (building === "Pabellón 2 (1º y 2º ESO)") {
+    // 4. Pabellón III (1º y 2º ESO)
+    if (building === "Pabellón III (1º y 2º ESO)") {
       if (floor === "Planta Baja") {
-        // CORRECCION APLICADA v4.3
         return [
           "Aula Diversificación", "Aula Desdoble 1", "Aula Desdoble 2",
           "Pasillo / Baños", "Otro"
@@ -504,8 +502,8 @@ const StepLocation = ({ formData, updateForm, handleNext, handleBack }) => {
       }
     }
 
-    // 5. Pabellón 3 (5 años, 1º y 2º EP)
-    if (building === "Pabellón 3 (5 años, 1º y 2º EP)") {
+    // 5. Pabellón IV (5 años, 1º y 2º EP)
+    if (building === "Pabellón IV (5 años, 1º y 2º EP)") {
       if (floor === "Planta Baja") {
         return [
           "5 años A", "5 años B", "5 años C",
