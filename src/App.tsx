@@ -68,7 +68,7 @@ const db = getFirestore(app);
 const appId = 'datos_colegio';
 
 // --- Versión de la App ---
-const APP_VERSION = 'v4.5';
+const APP_VERSION = 'v4.6';
 
 // --- UTILIDAD: Compresor de Imágenes ---
 const compressImage = (base64Str, maxWidth = 800, quality = 0.6) => {
@@ -97,10 +97,10 @@ const compressImage = (base64Str, maxWidth = 800, quality = 0.6) => {
 
 // --- Datos Estáticos ---
 const BUILDINGS = [
-  "Pabellón I (Portería, Dirección, Bach.)",
-  "Pabellón II (3º y 4º ESO)",
-  "Pabellón III (1º y 2º ESO)",
-  "Pabellón IV (5 años, 1º y 2º EP)",
+  "Pabellón Principal (Portería, Dirección, Bach.)",
+  "Pabellón 1 (3º y 4º ESO)",
+  "Pabellón 2 (1º y 2º ESO)",
+  "Pabellón 3 (5 años, 1º y 2º EP)",
   "Pirámide (3º-6º EP)",
   "Pabellón 3 y 4 años",
   "Otros Espacios Comunes"
@@ -433,8 +433,8 @@ const StepLocation = ({ formData, updateForm, handleNext, handleBack }) => {
     const building = formData.building;
     const floor = formData.floor;
 
-    // 2. Pabellón I (Portería, Dirección, Bach.)
-    if (building === "Pabellón I (Portería, Dirección, Bach.)") {
+    // 2. Pabellón Principal (Portería, Dirección, Bach.)
+    if (building === "Pabellón Principal (Portería, Dirección, Bach.)") {
       if (floor === "Planta Baja") {
         return [
           "1º BTO A", "1º BTO B",
@@ -457,8 +457,8 @@ const StepLocation = ({ formData, updateForm, handleNext, handleBack }) => {
       }
     }
 
-    // 3. Pabellón II (3º y 4º ESO)
-    if (building === "Pabellón II (3º y 4º ESO)") {
+    // 3. Pabellón 1 (3º y 4º ESO)
+    if (building === "Pabellón 1 (3º y 4º ESO)") {
       if (floor === "Planta Baja") {
         return [
           "Sala Chromebook", "Clase de Diversificación",
@@ -480,8 +480,8 @@ const StepLocation = ({ formData, updateForm, handleNext, handleBack }) => {
       }
     }
 
-    // 4. Pabellón III (1º y 2º ESO)
-    if (building === "Pabellón III (1º y 2º ESO)") {
+    // 4. Pabellón 2 (1º y 2º ESO)
+    if (building === "Pabellón 2 (1º y 2º ESO)") {
       if (floor === "Planta Baja") {
         return [
           "Aula Diversificación", "Aula Desdoble 1", "Aula Desdoble 2",
@@ -502,8 +502,8 @@ const StepLocation = ({ formData, updateForm, handleNext, handleBack }) => {
       }
     }
 
-    // 5. Pabellón IV (5 años, 1º y 2º EP)
-    if (building === "Pabellón IV (5 años, 1º y 2º EP)") {
+    // 5. Pabellón 3 (5 años, 1º y 2º EP)
+    if (building === "Pabellón 3 (5 años, 1º y 2º EP)") {
       if (floor === "Planta Baja") {
         return [
           "5 años A", "5 años B", "5 años C",
@@ -679,7 +679,7 @@ const StepDetails = ({ formData, updateForm, handleBack, handleSubmit, isSubmitt
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Tu Nombre</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Tu Nombre <span className="text-red-500">*</span></label>
           <div className="relative">
             <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input 
@@ -687,7 +687,7 @@ const StepDetails = ({ formData, updateForm, handleBack, handleSubmit, isSubmitt
               placeholder="Ej: Juan Pérez" 
               value={formData.reporterName} 
               onChange={(e) => updateForm('reporterName', e.target.value)} 
-              className="w-full pl-9 p-2 border rounded-lg text-sm bg-gray-50"
+              className={`w-full pl-9 p-2 border rounded-lg text-sm bg-gray-50 ${!formData.reporterName ? 'border-red-300 focus:ring-red-200' : 'border-gray-300'}`}
             />
           </div>
         </div>
@@ -711,7 +711,11 @@ const StepDetails = ({ formData, updateForm, handleBack, handleSubmit, isSubmitt
         )}
         <div className="flex gap-3">
           <button onClick={handleBack} className="px-4 py-2 border rounded-lg">Atrás</button>
-          <button onClick={handleSubmit} disabled={!formData.description || isSubmitting} className="flex-1 bg-blue-600 text-white rounded-lg shadow-lg flex items-center justify-center gap-2 font-bold disabled:bg-gray-400">
+          <button 
+            onClick={handleSubmit} 
+            disabled={!formData.description || !formData.reporterName || isSubmitting} 
+            className="flex-1 bg-blue-600 text-white rounded-lg shadow-lg flex items-center justify-center gap-2 font-bold disabled:bg-gray-400"
+          >
             {isSubmitting ? 'Enviando...' : 'Enviar Incidencia'} <Send size={16} />
           </button>
         </div>
@@ -1108,7 +1112,7 @@ export default function App() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.description) return;
+    if (!formData.description || !formData.reporterName) return;
     setSubmitError(null);
 
     // --- DETECCIÓN DEL HUEVO DE PASCUA ---
