@@ -32,7 +32,15 @@ import {
   RotateCcw,
   Video,
   Link as LinkIcon,
-  QrCode
+  QrCode,
+  Sparkles,
+  Wrench,
+  Wifi,
+  ShieldCheck,
+  ArrowLeft,
+  ChevronDown,
+  Copy,
+  Layers
 } from 'lucide-react';
 import { initializeApp } from "firebase/app";
 import { 
@@ -96,7 +104,7 @@ const db = getFirestore(app);
 const appId = 'datos_colegio';
 
 // --- Versión de la App ---
-const APP_VERSION = 'v4.7';
+const APP_VERSION = 'v5.0';
 
 // --- UTILIDAD: Compresor de Imágenes ---
 const compressImage = (base64Str: string, maxWidth = 800, quality = 0.6): Promise<string> => {
@@ -123,7 +131,7 @@ const compressImage = (base64Str: string, maxWidth = 800, quality = 0.6): Promis
       ctx.drawImage(img, 0, 0, width, height);
       resolve(canvas.toDataURL('image/jpeg', quality));
     };
-    img.onerror = () => resolve(base64Str); // Si falla, devuelve original
+    img.onerror = () => resolve(base64Str);
   });
 };
 
@@ -137,6 +145,44 @@ const BUILDINGS = [
   "Pabellón 3 y 4 años",
   "Otros Espacios Comunes"
 ];
+
+const BUILDING_METADATA: Record<string, { shortTitle: string; subtitle: string; badge: string }> = {
+  "Pabellón Principal (Portería, Dirección, Bach.)": {
+    shortTitle: "Pabellón Principal",
+    subtitle: "Portería, Dirección, Orientación y Bachillerato",
+    badge: "Bach. / Admin"
+  },
+  "Pabellón 1 (3º y 4º ESO)": {
+    shortTitle: "Pabellón 1",
+    subtitle: "3º y 4º ESO, Sala Chromebook y Diversificación",
+    badge: "3º - 4º ESO"
+  },
+  "Pabellón 2 (1º y 2º ESO)": {
+    shortTitle: "Pabellón 2",
+    subtitle: "1º y 2º ESO, Desdobles y Diversificación",
+    badge: "1º - 2º ESO"
+  },
+  "Pabellón 3 (5 años, 1º y 2º EP)": {
+    shortTitle: "Pabellón 3",
+    subtitle: "Infantil 5 años, 1º y 2º de Educación Primaria",
+    badge: "5 años / 1º-2º EP"
+  },
+  "Pirámide (3º-6º EP)": {
+    shortTitle: "Edificio Pirámide",
+    subtitle: "1ª Pl: 3º EP, 4ºA/C y Esp. • 2ª Pl: 4ºB, PT, 5º y 6º EP",
+    badge: "3º - 6º EP"
+  },
+  "Pabellón 3 y 4 años": {
+    shortTitle: "Pabellón Infantil",
+    subtitle: "Educación Infantil de 3 y 4 años",
+    badge: "3 y 4 años"
+  },
+  "Otros Espacios Comunes": {
+    shortTitle: "Espacios Comunes",
+    subtitle: "Salón de Actos, Comedor, Patios, Gimnasios, Sala Prof...",
+    badge: "Zonas Comunes"
+  }
+};
 
 const COMMON_SPACES_LIST = [
   "Salón de Actos",
@@ -220,6 +266,142 @@ const getRelativeTime = (timestamp?: { seconds: number } | null): string => {
   return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 };
 
+// Función auxiliar para obtener las aulas según edificio y planta
+const getRoomsForBuildingAndFloor = (building: string, floor: string): string[] => {
+  if (building === "Otros Espacios Comunes") return COMMON_SPACES_LIST;
+
+  // 2. Pabellón Principal (Portería, Dirección, Bach.)
+  if (building === "Pabellón Principal (Portería, Dirección, Bach.)") {
+    if (floor === "Planta Baja") {
+      return [
+        "1º BTO A", "1º BTO B",
+        "Orientación",
+        "Portería", "Dirección", "Pastoral",
+        "Tutoría", "Pasillo / Baños", "Otro"
+      ];
+    }
+    if (floor === "1ª Planta") {
+      return [
+        "2º BTO A", "2º BTO B",
+        "Aula Auxiliar", "Tutoría",
+        "Pasillo / Baños", "Otro"
+      ];
+    }
+    if (floor === "2ª Planta") {
+      return [
+        "Laboratorio", "Pasillo / Baños", "Otro"
+      ];
+    }
+  }
+
+  // 3. Pabellón 1 (3º y 4º ESO)
+  if (building === "Pabellón 1 (3º y 4º ESO)") {
+    if (floor === "Planta Baja") {
+      return [
+        "Sala Chromebook", "Clase de Diversificación",
+        "Sala Múltiple", "Tutoría",
+        "Pasillo / Baños", "Otro"
+      ];
+    }
+    if (floor === "1ª Planta") {
+      return [
+        "4º ESO A", "4º ESO B", "4º ESO C",
+        "Tutoría", "Pasillo / Baños", "Otro"
+      ];
+    }
+    if (floor === "2ª Planta") {
+      return [
+        "3º ESO A", "3º ESO B", "3º ESO C",
+        "Tutoría", "Pasillo / Baños", "Otro"
+      ];
+    }
+  }
+
+  // 4. Pabellón 2 (1º y 2º ESO)
+  if (building === "Pabellón 2 (1º y 2º ESO)") {
+    if (floor === "Planta Baja") {
+      return [
+        "Aula Diversificación", "Aula Desdoble 1", "Aula Desdoble 2",
+        "Pasillo / Baños", "Otro"
+      ];
+    }
+    if (floor === "1ª Planta") {
+      return [
+        "2º ESO A", "2º ESO B", "2º ESO C",
+        "Tutoría", "Pasillo / Baños", "Otro"
+      ];
+    }
+    if (floor === "2ª Planta") {
+      return [
+        "1º ESO A", "1º ESO B", "1º ESO C",
+        "Tutoría", "Pasillo / Baños", "Otro"
+      ];
+    }
+  }
+
+  // 5. Pabellón 3 (5 años, 1º y 2º EP)
+  if (building === "Pabellón 3 (5 años, 1º y 2º EP)") {
+    if (floor === "Planta Baja") {
+      return [
+        "5 años A", "5 años B", "5 años C",
+        "Pasillo / Baños", "Otro"
+      ];
+    }
+    if (floor === "1ª Planta") {
+      return [
+        "1º EP A", "1º EP B", "1º EP C",
+        "Tutoría", "Pasillo / Baños", "Otro"
+      ];
+    }
+    if (floor === "2ª Planta") {
+      return [
+        "2º EP A", "2º EP B", "2º EP C",
+        "Tutoría", "Pasillo / Baños", "Otro"
+      ];
+    }
+  }
+
+  // 6. Pirámide (3º-6º EP) -> Actualizado:
+  // 1ª Planta: todo 3º, 4ºA y 4ºC (+ aulas específicas)
+  // 2ª Planta: 4ºB, Sala PT y todo 5º y 6º
+  if (building === "Pirámide (3º-6º EP)") {
+    if (floor === "1ª Planta") {
+      return [
+        "3º EP A", "3º EP B", "3º EP C",
+        "4º EP A", "4º EP C", 
+        "Sala de Robótica", "Laboratorio", "Sala de Música",
+        "Pasillo / Baños", "Otro"
+      ];
+    }
+    if (floor === "2ª Planta") {
+      return [
+        "4º EP B", "Sala PT",
+        "5º EP A", "5º EP B", "5º EP C",
+        "6º EP A", "6º EP B", "6º EP C",
+        "Pasillo / Baños", "Otro"
+      ];
+    }
+  }
+
+  // 7. Pabellón 3 y 4 años
+  if (building === "Pabellón 3 y 4 años") {
+    if (floor === "Planta Baja") {
+      return [
+        "3 años A", "3 años B", "3 años C", 
+        "Otro"
+      ];
+    }
+    if (floor === "1ª Planta") {
+      return [
+        "4 años A", "4 años B", "4 años C",
+        "Pasillo / Baños", "Otro"
+      ];
+    }
+  }
+
+  return ["Aula A", "Aula B", "Aula C", "Tutoría", "Pasillo / Baños", "Otro"];
+};
+
 // --- Componente de Cámara Integrada ---
 interface CameraModalProps {
   onCapture: (dataUrl: string) => void;
@@ -241,7 +423,6 @@ const CameraModal: React.FC<CameraModalProps> = ({ onCapture, onClose }) => {
   }, []);
 
   useEffect(() => {
-    // Solo activamos la cámara cuando el usuario ha aceptado la introducción y no hay foto capturada
     if (showIntro || capturedImage) {
       return;
     }
@@ -282,7 +463,6 @@ const CameraModal: React.FC<CameraModalProps> = ({ onCapture, onClose }) => {
     if (!videoRef.current) return;
     const canvas = document.createElement('canvas');
     
-    // Configurar tamaño máximo para comprimir la imagen
     const MAX_WIDTH = 800;
     let width = videoRef.current.videoWidth || 800;
     let height = videoRef.current.videoHeight || 600;
@@ -298,7 +478,6 @@ const CameraModal: React.FC<CameraModalProps> = ({ onCapture, onClose }) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.drawImage(videoRef.current, 0, 0, width, height);
-    // Comprimir a JPEG calidad 0.6
     const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
     
     stopCurrentStream();
@@ -321,32 +500,29 @@ const CameraModal: React.FC<CameraModalProps> = ({ onCapture, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black z-[60] flex flex-col items-center justify-center animate-in fade-in duration-200">
-      
+    <div className="fixed inset-0 bg-slate-950 z-[60] flex flex-col items-center justify-center animate-in fade-in duration-200">
       {showIntro && !error && !capturedImage && (
-        <div className="absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
-          <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700 max-w-sm w-full shadow-2xl">
-            <div className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg shadow-blue-900/50">
-              <Video size={28} className="text-white" />
+        <div className="absolute inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
+          <div className="bg-slate-900 p-7 rounded-3xl border border-slate-800 max-w-sm w-full shadow-2xl">
+            <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-indigo-950/60">
+              <Video size={30} className="text-white" />
             </div>
-            <h3 className="text-white font-bold text-xl mb-3">Modo Vídeo en Vivo</h3>
-            <p className="text-gray-300 text-sm mb-6 leading-relaxed">
-              Se activará la cámara para que puedas <strong>enfocar la escena en vídeo</strong>. 
-              <br/><br/>
-              Cuando tengas el encuadre, pulsa el botón para <strong>congelar el momento</strong> y guardarlo como foto.
+            <h3 className="text-white font-extrabold text-xl mb-2.5">Modo Cámara en Vivo</h3>
+            <p className="text-slate-300 text-sm mb-6 leading-relaxed">
+              Enfoca la avería o incidencia en pantalla y pulsa el disparador central para <strong>congelar y adjuntar la imagen</strong> comprimida automáticamente.
             </p>
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               <button 
                 type="button"
                 onClick={() => setShowIntro(false)}
-                className="w-full py-3.5 bg-white text-black font-bold rounded-xl hover:bg-gray-100 transition-colors shadow-lg active:scale-95 transform duration-100"
+                className="w-full py-3.5 bg-white text-slate-900 font-bold rounded-2xl hover:bg-slate-100 transition-all shadow-lg active:scale-95"
               >
-                Entendido, abrir cámara
+                Activar cámara
               </button>
               <button 
                 type="button"
                 onClick={handleClose}
-                className="w-full py-3 text-gray-400 font-medium hover:text-white transition-colors"
+                className="w-full py-3 text-slate-400 font-semibold hover:text-white transition-colors"
               >
                 Cancelar
               </button>
@@ -357,9 +533,9 @@ const CameraModal: React.FC<CameraModalProps> = ({ onCapture, onClose }) => {
 
       {error ? (
         <div className="text-white p-6 text-center max-w-sm">
-          <AlertCircle size={40} className="text-red-400 mx-auto mb-3" />
-          <p className="mb-4 text-red-300 text-sm">{error}</p>
-          <button type="button" onClick={handleClose} className="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-xl font-medium">Cerrar</button>
+          <AlertCircle size={44} className="text-rose-400 mx-auto mb-3" />
+          <p className="mb-5 text-rose-200 text-sm leading-relaxed">{error}</p>
+          <button type="button" onClick={handleClose} className="px-6 py-3 bg-slate-800 hover:bg-slate-700 rounded-2xl font-semibold">Cerrar</button>
         </div>
       ) : (
         <div className="relative w-full h-full flex flex-col">
@@ -378,29 +554,29 @@ const CameraModal: React.FC<CameraModalProps> = ({ onCapture, onClose }) => {
           </div>
           
           {!showIntro && (
-            <div className="p-6 bg-black/90 flex justify-center items-center gap-8 pb-10">
+            <div className="p-6 bg-slate-950/90 backdrop-blur-md flex justify-center items-center gap-10 pb-10 border-t border-white/10">
               {capturedImage ? (
                 <>
                   <button 
                     type="button"
                     onClick={retakePhoto}
-                    className="flex flex-col items-center gap-1 text-white opacity-80 hover:opacity-100"
+                    className="flex flex-col items-center gap-1.5 text-white opacity-85 hover:opacity-100"
                   >
-                    <div className="p-3 rounded-full bg-gray-700">
-                      <RotateCcw size={24} />
+                    <div className="p-3.5 rounded-full bg-slate-800 border border-slate-700">
+                      <RotateCcw size={22} />
                     </div>
-                    <span className="text-xs">Repetir</span>
+                    <span className="text-xs font-medium">Repetir</span>
                   </button>
 
                   <button 
                     type="button"
                     onClick={confirmPhoto}
-                    className="flex flex-col items-center gap-1 text-green-400 hover:text-green-300 transform hover:scale-105 transition-all"
+                    className="flex flex-col items-center gap-1.5 text-emerald-400 hover:text-emerald-300 transform hover:scale-105 transition-all"
                   >
-                    <div className="p-4 rounded-full bg-white">
-                      <Check size={32} className="text-green-600" />
+                    <div className="p-4 rounded-full bg-white shadow-lg">
+                      <Check size={30} className="text-emerald-600" />
                     </div>
-                    <span className="text-xs font-bold">Guardar</span>
+                    <span className="text-xs font-bold">Usar foto</span>
                   </button>
                 </>
               ) : (
@@ -408,15 +584,15 @@ const CameraModal: React.FC<CameraModalProps> = ({ onCapture, onClose }) => {
                   <button 
                     type="button"
                     onClick={handleClose} 
-                    className="absolute left-6 text-white p-2"
+                    className="absolute left-6 text-white/80 hover:text-white px-3 py-2 rounded-xl bg-white/5"
                   >
-                    <span className="text-sm font-medium">Cancelar</span>
+                    <span className="text-sm font-semibold">Cancelar</span>
                   </button>
                   
                   <button 
                     type="button"
                     onClick={takePhoto} 
-                    className="p-1 rounded-full border-4 border-white transition-transform active:scale-95"
+                    className="p-1.5 rounded-full border-4 border-white transition-transform active:scale-90 shadow-xl"
                     aria-label="Capturar foto"
                   >
                     <div className="w-16 h-16 bg-white rounded-full"></div>
@@ -431,68 +607,205 @@ const CameraModal: React.FC<CameraModalProps> = ({ onCapture, onClose }) => {
   );
 };
 
-// --- Sub-Componentes ---
-
-interface StepCategoryProps {
+// --- Indicador de Pasos (Stepper) ---
+interface StepperProps {
+  currentStep: number;
   formData: IncidentFormData;
-  onSelectCategory: (category: 'maintenance' | 'it') => void;
-  onEditPreselectedLocation: () => void;
+  onGoToStep: (step: number) => void;
 }
 
-const StepCategory: React.FC<StepCategoryProps> = ({ formData, onSelectCategory, onEditPreselectedLocation }) => {
-  const hasPreselectedLocation = Boolean(formData.building && formData.room);
+const Stepper: React.FC<StepperProps> = ({ currentStep, formData, onGoToStep }) => {
+  if (currentStep === 4) return null;
+
+  const steps = [
+    { num: 1, label: "Categoría", done: Boolean(formData.category) },
+    { num: 2, label: "Ubicación", done: Boolean(formData.building && formData.room) },
+    { num: 3, label: "Detalles", done: Boolean(formData.description && formData.reporterName) }
+  ];
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <h2 className="text-xl font-bold text-gray-800 text-center">Tipo de incidencia</h2>
+    <div className="mb-7">
+      <div className="flex items-center justify-between relative">
+        {/* Línea de fondo */}
+        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-0.5 bg-slate-200 -z-0 mx-8" />
+        <div
+          className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-indigo-600 -z-0 mx-8 transition-all duration-500"
+          style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '42%' : '84%' }}
+        />
 
-      {hasPreselectedLocation && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between text-xs text-blue-800">
-          <div className="flex items-center gap-2">
-            <MapPin size={16} className="text-blue-600 shrink-0" />
-            <span>
-              Ubicación detectada: <strong>{formData.building}</strong>
-              {formData.floor && formData.floor !== 'N/A' ? ` • ${formData.floor}` : ''} • <strong>{formData.room}</strong>
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={onEditPreselectedLocation}
-            className="text-blue-700 underline font-semibold ml-2 shrink-0"
-          >
-            Cambiar
-          </button>
-        </div>
-      )}
+        {steps.map((s) => {
+          const isActive = currentStep === s.num;
+          const isCompleted = currentStep > s.num;
+          const canClick = s.num < currentStep || (s.num === 2 && Boolean(formData.category));
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <button
-          type="button"
-          onClick={() => onSelectCategory('maintenance')}
-          className="p-6 bg-orange-50 border-2 border-orange-200 rounded-2xl flex flex-col items-center gap-3 hover:bg-orange-100 transition-all active:scale-[0.99]"
-        >
-          <Hammer size={40} className="text-orange-600" />
-          <div className="text-center">
-            <span className="block text-lg font-bold text-orange-800">Mantenimiento</span>
-            <span className="text-sm text-orange-600">Luces, muebles, puertas, agua...</span>
-          </div>
-        </button>
-        <button
-          type="button"
-          onClick={() => onSelectCategory('it')}
-          className="p-6 bg-blue-50 border-2 border-blue-200 rounded-2xl flex flex-col items-center gap-3 hover:bg-blue-100 transition-all active:scale-[0.99]"
-        >
-          <Monitor size={40} className="text-blue-600" />
-          <div className="text-center">
-            <span className="block text-lg font-bold text-blue-800">Informática</span>
-            <span className="text-sm text-blue-600">PCs, redes, proyectores, TV...</span>
-          </div>
-        </button>
+          return (
+            <button
+              key={s.num}
+              type="button"
+              disabled={!canClick}
+              onClick={() => canClick && onGoToStep(s.num)}
+              className={`relative z-10 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                isActive
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/25 ring-4 ring-indigo-50'
+                  : isCompleted
+                  ? 'bg-emerald-600 text-white shadow-sm cursor-pointer hover:bg-emerald-700'
+                  : 'bg-white text-slate-400 border border-slate-200'
+              }`}
+            >
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-extrabold ${
+                isActive ? 'bg-white/20 text-white' : isCompleted ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+              }`}>
+                {isCompleted ? <Check size={12} /> : s.num}
+              </span>
+              <span>{s.label}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 };
 
+// --- Paso 1: Categoría ---
+interface StepCategoryProps {
+  formData: IncidentFormData;
+  incidents: Incident[];
+  onSelectCategory: (category: 'maintenance' | 'it') => void;
+  onEditPreselectedLocation: () => void;
+}
+
+const StepCategory: React.FC<StepCategoryProps> = ({
+  formData,
+  incidents,
+  onSelectCategory,
+  onEditPreselectedLocation
+}) => {
+  const hasPreselectedLocation = Boolean(formData.building && formData.room);
+  const pendingCount = incidents.filter(i => i.status === 'pending').length;
+  const resolvedCount = incidents.filter(i => i.status === 'resolved').length;
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <div className="text-center space-y-1.5">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-100">
+          <Sparkles size={12} /> Parte Rápido de Incidencias
+        </span>
+        <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">¿Qué tipo de avería quieres reportar?</h2>
+        <p className="text-sm text-slate-500">Selecciona el departamento para dirigir el aviso directamente</p>
+      </div>
+
+      {hasPreselectedLocation && (
+        <div className="bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 border border-indigo-200/80 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <QrCode size={20} />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">Aula detectada por código QR</div>
+              <div className="text-sm font-bold text-slate-900 truncate">
+                {BUILDING_METADATA[formData.building]?.shortTitle || formData.building}
+                {formData.floor && formData.floor !== 'N/A' ? ` • ${formData.floor}` : ''} • <span className="text-indigo-700">{formData.room}</span>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onEditPreselectedLocation}
+            className="px-3 py-1.5 rounded-xl bg-white text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-xs font-bold transition-colors shrink-0 shadow-2xs"
+          >
+            Cambiar aula
+          </button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Tarjeta Mantenimiento */}
+        <button
+          type="button"
+          onClick={() => onSelectCategory('maintenance')}
+          className="group relative overflow-hidden p-6 bg-gradient-to-br from-amber-50/90 via-orange-50/60 to-white border-2 border-orange-200/80 hover:border-orange-400 rounded-3xl flex flex-col justify-between text-left transition-all duration-200 hover:shadow-xl hover:shadow-orange-500/10 hover:-translate-y-0.5 active:scale-[0.99]"
+        >
+          <div className="absolute -right-6 -top-6 w-28 h-28 bg-orange-400/10 rounded-full blur-2xl group-hover:bg-orange-400/20 transition-all" />
+          
+          <div className="flex items-start justify-between w-full mb-5">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white flex items-center justify-center shadow-lg shadow-orange-500/25 group-hover:scale-105 transition-transform">
+              <Hammer size={28} />
+            </div>
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-orange-700 bg-orange-100/80 px-2.5 py-1 rounded-full">
+              Instalaciones <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+            </span>
+          </div>
+
+          <div>
+            <h3 className="text-xl font-extrabold text-slate-900 mb-1 group-hover:text-orange-950">Mantenimiento</h3>
+            <p className="text-xs text-slate-600 leading-relaxed mb-4">
+              Desperfectos físicos en aulas, mobiliario, electricidad, fontanería, puertas, persianas o climatización.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {["Luces", "Persianas", "Mobiliario", "Puertas", "Baños/Agua"].map(tag => (
+                <span key={tag} className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-white/90 text-orange-800 border border-orange-200/60">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        </button>
+
+        {/* Tarjeta Informática */}
+        <button
+          type="button"
+          onClick={() => onSelectCategory('it')}
+          className="group relative overflow-hidden p-6 bg-gradient-to-br from-blue-50/90 via-indigo-50/60 to-white border-2 border-blue-200/80 hover:border-blue-400 rounded-3xl flex flex-col justify-between text-left transition-all duration-200 hover:shadow-xl hover:shadow-blue-500/10 hover:-translate-y-0.5 active:scale-[0.99]"
+        >
+          <div className="absolute -right-6 -top-6 w-28 h-28 bg-blue-400/10 rounded-full blur-2xl group-hover:bg-blue-400/20 transition-all" />
+
+          <div className="flex items-start justify-between w-full mb-5">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-transform">
+              <Monitor size={28} />
+            </div>
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 bg-blue-100/80 px-2.5 py-1 rounded-full">
+              TIC / Equipos <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+            </span>
+          </div>
+
+          <div>
+            <h3 className="text-xl font-extrabold text-slate-900 mb-1 group-hover:text-blue-950">Informática y TIC</h3>
+            <p className="text-xs text-slate-600 leading-relaxed mb-4">
+              Averías en ordenadores, pantallas interactivas, proyectores, sonido, conectividad WiFi o impresoras.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {["Televisores", "Ordenadores", "WiFi / Red", "Audio / HDMI", "Proyectores"].map(tag => (
+                <span key={tag} className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-white/90 text-blue-800 border border-blue-200/60">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {/* Resumen de estado en vivo */}
+      <div className="pt-2">
+        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 flex items-center justify-between text-xs text-slate-600">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-semibold text-slate-700">Estado del servicio en tiempo real</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="font-bold text-amber-700 bg-amber-100/80 px-2.5 py-0.5 rounded-full">
+              {pendingCount} pendientes
+            </span>
+            <span className="font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-0.5 rounded-full">
+              {resolvedCount} resueltas
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Paso 2: Ubicación ---
 interface StepLocationProps {
   formData: IncidentFormData;
   updateForm: <K extends keyof IncidentFormData>(field: K, value: IncidentFormData[K]) => void;
@@ -503,15 +816,18 @@ interface StepLocationProps {
 const StepLocation: React.FC<StepLocationProps> = ({ formData, updateForm, handleNext, handleBack }) => {
   const isCommonSpace = formData.building === "Otros Espacios Comunes";
 
-  const handleBuildingChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value;
+  const selectBuilding = (val: string) => {
     if (val === "Otros Espacios Comunes") {
       updateForm('building', val);
       updateForm('floor', 'N/A');
       updateForm('room', '');
+    } else if (val === "Pirámide (3º-6º EP)") {
+      updateForm('building', val);
+      updateForm('floor', '1ª Planta');
+      updateForm('room', '');
     } else {
       updateForm('building', val);
-      updateForm('floor', '');
+      updateForm('floor', 'Planta Baja');
       updateForm('room', '');
     }
   };
@@ -527,165 +843,80 @@ const StepLocation: React.FC<StepLocationProps> = ({ formData, updateForm, handl
   }, [formData.building]);
 
   const availableRooms = useMemo(() => {
-    // 1. Espacios Comunes
-    if (isCommonSpace) return COMMON_SPACES_LIST;
-
-    const building = formData.building;
-    const floor = formData.floor;
-
-    // 2. Pabellón Principal (Portería, Dirección, Bach.)
-    if (building === "Pabellón Principal (Portería, Dirección, Bach.)") {
-      if (floor === "Planta Baja") {
-        return [
-          "1º BTO A", "1º BTO B",
-          "Orientación",
-          "Portería", "Dirección", "Pastoral",
-          "Tutoría", "Pasillo / Baños", "Otro"
-        ];
-      }
-      if (floor === "1ª Planta") {
-        return [
-          "2º BTO A", "2º BTO B",
-          "Aula Auxiliar", "Tutoría",
-          "Pasillo / Baños", "Otro"
-        ];
-      }
-      if (floor === "2ª Planta") {
-        return [
-          "Laboratorio", "Pasillo / Baños", "Otro"
-        ];
-      }
-    }
-
-    // 3. Pabellón 1 (3º y 4º ESO)
-    if (building === "Pabellón 1 (3º y 4º ESO)") {
-      if (floor === "Planta Baja") {
-        return [
-          "Sala Chromebook", "Clase de Diversificación",
-          "Sala Múltiple", "Tutoría",
-          "Pasillo / Baños", "Otro"
-        ];
-      }
-      if (floor === "1ª Planta") {
-        return [
-          "4º ESO A", "4º ESO B", "4º ESO C",
-          "Tutoría", "Pasillo / Baños", "Otro"
-        ];
-      }
-      if (floor === "2ª Planta") {
-        return [
-          "3º ESO A", "3º ESO B", "3º ESO C",
-          "Tutoría", "Pasillo / Baños", "Otro"
-        ];
-      }
-    }
-
-    // 4. Pabellón 2 (1º y 2º ESO)
-    if (building === "Pabellón 2 (1º y 2º ESO)") {
-      if (floor === "Planta Baja") {
-        return [
-          "Aula Diversificación", "Aula Desdoble 1", "Aula Desdoble 2",
-          "Pasillo / Baños", "Otro"
-        ];
-      }
-      if (floor === "1ª Planta") {
-        return [
-          "2º ESO A", "2º ESO B", "2º ESO C",
-          "Tutoría", "Pasillo / Baños", "Otro"
-        ];
-      }
-      if (floor === "2ª Planta") {
-        return [
-          "1º ESO A", "1º ESO B", "1º ESO C",
-          "Tutoría", "Pasillo / Baños", "Otro"
-        ];
-      }
-    }
-
-    // 5. Pabellón 3 (5 años, 1º y 2º EP)
-    if (building === "Pabellón 3 (5 años, 1º y 2º EP)") {
-      if (floor === "Planta Baja") {
-        return [
-          "5 años A", "5 años B", "5 años C",
-          "Pasillo / Baños", "Otro"
-        ];
-      }
-      if (floor === "1ª Planta") {
-        return [
-          "1º EP A", "1º EP B", "1º EP C",
-          "Tutoría", "Pasillo / Baños", "Otro"
-        ];
-      }
-      if (floor === "2ª Planta") {
-        return [
-          "2º EP A", "2º EP B", "2º EP C",
-          "Tutoría", "Pasillo / Baños", "Otro"
-        ];
-      }
-    }
-
-    // 6. Pirámide (3º-6º EP)
-    if (building === "Pirámide (3º-6º EP)") {
-      if (floor === "1ª Planta") {
-        return [
-          "4º EP A", "4º EP C", 
-          "5º EP A", "5º EP B", "5º EP C", 
-          "Sala de Robótica", "Laboratorio", "Sala de Música",
-          "Pasillo / Baños", "Otro"
-        ];
-      }
-      if (floor === "2ª Planta") {
-        return [
-          "Sala PT", "4º EP B",
-          "3º EP A", "3º EP B", "3º EP C",
-          "6º EP A", "6º EP B", "6º EP C",
-          "Pasillo / Baños", "Otro"
-        ];
-      }
-    }
-
-    // 7. Pabellón 3 y 4 años
-    if (building === "Pabellón 3 y 4 años") {
-      if (floor === "Planta Baja") {
-        return [
-          "3 años A", "3 años B", "3 años C", 
-          "Otro" // Baño incluido en aula
-        ];
-      }
-      if (floor === "1ª Planta") {
-        return [
-          "4 años A", "4 años B", "4 años C",
-          "Pasillo / Baños", "Otro"
-        ];
-      }
-    }
-
-    // Default genérico
-    return ["Aula A", "Aula B", "Aula C", "Tutoría", "Pasillo / Baños", "Otro"];
-  }, [formData.building, formData.floor, isCommonSpace]);
+    return getRoomsForBuildingAndFloor(formData.building, formData.floor);
+  }, [formData.building, formData.floor]);
 
   const canContinue = isCommonSpace
     ? Boolean(formData.building && formData.room)
     : Boolean(formData.building && formData.floor && formData.room);
 
+  const handleSelectRoom = (r: string) => {
+    updateForm('room', r);
+  };
+
   return (
-    <div className="space-y-5 animate-in fade-in slide-in-from-right-8 duration-300">
-      <h2 className="text-xl font-bold text-gray-800">Ubicación</h2>
-      <div className="space-y-3">
-        <label className="block text-sm font-medium text-gray-700">Edificio / Zona</label>
-        <select 
-          value={formData.building}
-          onChange={handleBuildingChange}
-          className="w-full p-3 bg-white border border-gray-300 rounded-xl"
+    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-extrabold text-slate-900">¿Dónde está la incidencia?</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Selecciona el edificio, planta y aula o espacio</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleBack}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/70 px-3 py-2 rounded-xl transition-colors"
         >
-          <option value="">Selecciona...</option>
-          {BUILDINGS.map(b => <option key={b} value={b}>{b}</option>)}
-        </select>
-        {formData.building && !isCommonSpace && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Planta</label>
-            <div className="flex gap-2">
-              {availableFloors.map(f => (
+          <ArrowLeft size={14} /> Categoría
+        </button>
+      </div>
+
+      {/* 1. Selector visual de Edificio */}
+      <div className="space-y-2.5">
+        <label className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-slate-500">
+          <Building size={13} className="text-indigo-600" /> 1. Edificio o Pabellón
+        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {BUILDINGS.map((b) => {
+            const meta = BUILDING_METADATA[b] || { shortTitle: b, subtitle: '', badge: '' };
+            const isSelected = formData.building === b;
+            return (
+              <button
+                type="button"
+                key={b}
+                onClick={() => selectBuilding(b)}
+                className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between gap-1 ${
+                  isSelected
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20 ring-2 ring-indigo-200'
+                    : 'bg-slate-50/70 hover:bg-white text-slate-800 border-slate-200/90 hover:border-indigo-300 hover:shadow-xs'
+                } ${b === "Otros Espacios Comunes" ? 'sm:col-span-2' : ''}`}
+              >
+                <div className="flex items-center justify-between gap-2 w-full">
+                  <span className="font-bold text-sm leading-snug">{meta.shortTitle}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                    isSelected ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-600'
+                  }`}>
+                    {meta.badge}
+                  </span>
+                </div>
+                <span className={`text-[11px] leading-tight ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
+                  {meta.subtitle}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 2. Selector de Planta */}
+      {formData.building && !isCommonSpace && (
+        <div className="space-y-2 animate-in fade-in duration-200">
+          <label className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-slate-500">
+            <Layers size={13} className="text-indigo-600" /> 2. Planta
+          </label>
+          <div className="grid grid-cols-3 gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/60">
+            {availableFloors.map(f => {
+              const active = formData.floor === f;
+              return (
                 <button
                   type="button"
                   key={f}
@@ -693,40 +924,71 @@ const StepLocation: React.FC<StepLocationProps> = ({ formData, updateForm, handl
                     updateForm('floor', f);
                     updateForm('room', '');
                   }}
-                  className={`flex-1 p-2 text-sm border rounded-lg transition-colors ${formData.floor === f ? 'bg-blue-600 text-white border-blue-600' : 'bg-white hover:bg-gray-50'}`}
+                  className={`py-2.5 px-3 text-xs font-bold rounded-xl transition-all ${
+                    active
+                      ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
                 >
                   {f}
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        )}
-        {(isCommonSpace || formData.floor) && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Espacio / Aula</label>
-            <div className="grid grid-cols-2 gap-2">
-              {availableRooms.map(r => (
+        </div>
+      )}
+
+      {/* 3. Selector de Aula / Espacio */}
+      {(isCommonSpace || formData.floor) && (
+        <div className="space-y-2.5 animate-in fade-in duration-200">
+          <label className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-slate-500">
+            <MapPin size={13} className="text-indigo-600" /> {isCommonSpace ? '2. Espacio Común' : '3. Aula o Espacio'}
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {availableRooms.map(r => {
+              const active = formData.room === r;
+              return (
                 <button
                   type="button"
                   key={r}
-                  onClick={() => updateForm('room', r)}
-                  className={`p-2 text-sm border rounded-lg transition-colors ${formData.room === r ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white hover:bg-gray-50'}`}
+                  onClick={() => handleSelectRoom(r)}
+                  className={`p-3 text-xs font-bold border rounded-xl transition-all flex items-center justify-between gap-1.5 text-left ${
+                    active
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20'
+                      : 'bg-white hover:bg-indigo-50/40 text-slate-700 border-slate-200 hover:border-indigo-300'
+                  }`}
                 >
-                  {r}
+                  <span className="truncate">{r}</span>
+                  {active && <Check size={14} className="shrink-0" />}
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        )}
-      </div>
-      <div className="flex gap-3 pt-2">
-        <button type="button" onClick={handleBack} className="px-4 py-2 border rounded-lg hover:bg-gray-50">Atrás</button>
-        <button type="button" onClick={handleNext} disabled={!canContinue} className="flex-1 py-2 bg-gray-900 text-white rounded-lg disabled:opacity-50 font-medium">Siguiente</button>
+        </div>
+      )}
+
+      <div className="flex gap-3 pt-3 border-t border-slate-100">
+        <button
+          type="button"
+          onClick={handleBack}
+          className="px-5 py-3 border border-slate-200 rounded-2xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+        >
+          Atrás
+        </button>
+        <button
+          type="button"
+          onClick={handleNext}
+          disabled={!canContinue}
+          className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl disabled:opacity-40 font-bold text-sm shadow-lg shadow-slate-900/10 flex items-center justify-center gap-2 transition-all"
+        >
+          Continuar a Detalles <ChevronRight size={16} />
+        </button>
       </div>
     </div>
   );
 };
 
+// --- Paso 3: Detalles ---
 interface StepDetailsProps {
   formData: IncidentFormData;
   updateForm: <K extends keyof IncidentFormData>(field: K, value: IncidentFormData[K]) => void;
@@ -762,161 +1024,227 @@ const StepDetails: React.FC<StepDetailsProps> = ({
   const isIT = formData.category === 'it';
 
   return (
-    <div className="space-y-5 animate-in fade-in slide-in-from-right-8 duration-300">
+    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
       {showCamera && <CameraModal onCapture={onCameraCapture} onClose={() => setShowCamera(false)} />}
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-800">Detalles</h2>
-        <button
-          type="button"
-          onClick={() => goToStep(1)}
-          className={`text-xs px-2.5 py-1 rounded-full font-semibold flex items-center gap-1.5 border ${
-            isIT ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-orange-50 text-orange-700 border-orange-200'
-          }`}
-          title="Cambiar tipo de incidencia"
-        >
-          {isIT ? <Monitor size={12} /> : <Hammer size={12} />}
-          {isIT ? 'Informática' : 'Mantenimiento'}
-        </button>
-      </div>
-      
-      <div className="bg-gray-50 p-3 rounded-lg border text-sm flex items-center justify-between gap-2 text-gray-600">
-        <div className="flex items-center gap-2 min-w-0">
-          <MapPin size={16} className="shrink-0 text-gray-500" /> 
-          <span className="truncate">
-            {formData.building} {formData.floor && formData.floor !== 'N/A' && `• ${formData.floor}`} • <b>{formData.room}</b>
-          </span>
+      {/* Resumen superior de Categoría y Ubicación */}
+      <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <button
+            type="button"
+            onClick={() => goToStep(1)}
+            className={`text-xs px-3 py-1 rounded-xl font-bold flex items-center gap-1.5 border shadow-2xs transition-transform active:scale-95 ${
+              isIT
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-orange-500 text-white border-orange-500'
+            }`}
+            title="Pulsa para cambiar categoría"
+          >
+            {isIT ? <Monitor size={13} /> : <Hammer size={13} />}
+            {isIT ? 'Informática' : 'Mantenimiento'}
+          </button>
+
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white px-3 py-1 rounded-xl border border-slate-200">
+            <MapPin size={13} className="text-indigo-600 shrink-0" />
+            <span className="truncate">
+              {BUILDING_METADATA[formData.building]?.shortTitle || formData.building}
+              {formData.floor && formData.floor !== 'N/A' && ` • ${formData.floor}`} • <strong className="text-indigo-700">{formData.room}</strong>
+            </span>
+          </div>
         </div>
+
         <button
           type="button"
           onClick={() => goToStep(2)}
-          className="text-xs text-blue-600 hover:underline font-medium shrink-0"
+          className="text-xs text-indigo-600 hover:text-indigo-800 font-bold px-2 py-1 rounded-lg hover:bg-indigo-50 transition-colors shrink-0"
         >
-          Cambiar
+          Cambiar aula
         </button>
       </div>
 
+      {/* Selección rápida de problemas frecuentes */}
       {issues.length > 0 && (
-        <div>
-          <span className="text-xs font-bold text-gray-500 uppercase">Frecuentes</span>
-          <div className="flex flex-wrap gap-2 mt-1">
-            {issues.map(i => (
-              <button
-                type="button"
-                key={i}
-                onClick={() => handleQuickTag(i)}
-                className={`text-xs px-2.5 py-1 border rounded-full transition-colors ${
-                  formData.description === i ? 'bg-blue-100 border-blue-400 text-blue-700 font-medium' : 'bg-white hover:bg-gray-50'
-                }`}
-              >
-                {i}
-              </button>
-            ))}
+        <div className="space-y-2">
+          <label className="flex items-center justify-between text-xs font-extrabold uppercase tracking-wider text-slate-500">
+            <span>Averías frecuentes (pulsa para rellenar)</span>
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {issues.map(i => {
+              const selected = formData.description === i;
+              return (
+                <button
+                  type="button"
+                  key={i}
+                  onClick={() => handleQuickTag(i)}
+                  className={`text-xs px-3 py-1.5 border rounded-xl font-semibold transition-all flex items-center gap-1.5 ${
+                    selected
+                      ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-500/20'
+                      : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/30'
+                  }`}
+                >
+                  {selected && <Check size={12} />}
+                  {i}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
 
-      <textarea
-        value={formData.description}
-        onChange={(e) => updateForm('description', e.target.value)}
-        placeholder="Describe el problema..."
-        className="w-full h-20 p-3 border rounded-xl resize-none focus:ring-2 focus:ring-blue-200 outline-none"
-      />
+      {/* Descripción detallada */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500">
+          Descripción de la avería <span className="text-rose-500">*</span>
+        </label>
+        <textarea
+          value={formData.description}
+          onChange={(e) => updateForm('description', e.target.value)}
+          placeholder="Describe brevemente qué ocurre (ej: el proyector parpadea en rojo, la persiana derecha se ha atascado...)"
+          className="w-full h-24 p-3.5 bg-slate-50/70 focus:bg-white border border-slate-200 focus:border-indigo-500 rounded-2xl resize-none text-sm focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
+        />
+      </div>
 
+      {/* Evidencia y Nombre del profesor */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Evidencia (Opcional)</label>
-          <div className="flex flex-col gap-2">
-            <div className="flex gap-2">
-              <button 
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 text-gray-700"
-              >
-                <ImageIcon size={16} />
-                Galería
-              </button>
+        <div className="space-y-2">
+          <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500">
+            Foto / Evidencia (Opcional)
+          </label>
+          {!formData.imageData ? (
+            <div className="grid grid-cols-2 gap-2">
               <button 
                 type="button"
                 onClick={() => setShowCamera(true)}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100"
+                className="flex items-center justify-center gap-2 px-3 py-3 bg-indigo-50/80 border border-indigo-200 text-indigo-700 rounded-2xl text-xs font-bold hover:bg-indigo-100 transition-colors"
               >
                 <Camera size={16} />
-                Cámara
+                Hacer Foto
+              </button>
+              <button 
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center justify-center gap-2 px-3 py-3 bg-white border border-slate-200 rounded-2xl text-xs font-bold hover:bg-slate-50 text-slate-700 transition-colors"
+              >
+                <ImageIcon size={16} />
+                Subir Galería
               </button>
             </div>
-
-            <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleImageUpload} />
-            
-            {formData.imageData && (
-              <div className="relative mt-1 inline-block w-fit">
-                <img src={formData.imageData} alt="Vista previa" className="h-16 w-16 object-cover rounded-lg border shadow-sm" />
-                <button
-                  type="button"
-                  onClick={() => updateForm('imageData', null)}
-                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600"
-                  aria-label="Eliminar imagen"
-                >
-                  <X size={12} />
-                </button>
+          ) : (
+            <div className="flex items-center justify-between p-2.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl">
+              <div className="flex items-center gap-3">
+                <img src={formData.imageData} alt="Vista previa" className="h-12 w-12 object-cover rounded-xl border border-emerald-300 shadow-2xs" />
+                <div>
+                  <div className="text-xs font-bold text-emerald-900">Imagen adjuntada</div>
+                  <div className="text-[11px] text-emerald-700">Comprimida y lista para enviar</div>
+                </div>
               </div>
-            )}
-          </div>
+              <button
+                type="button"
+                onClick={() => updateForm('imageData', null)}
+                className="p-2 text-rose-600 hover:bg-rose-100 rounded-xl transition-colors"
+                title="Quitar imagen"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          )}
+          <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleImageUpload} />
         </div>
         
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Tu Nombre <span className="text-red-500">*</span></label>
+        <div className="space-y-2">
+          <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500">
+            Reportado por <span className="text-rose-500">*</span>
+          </label>
           <div className="relative">
-            <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Ej: Juan Pérez" 
+              placeholder="Tu nombre (se recordará)" 
               value={formData.reporterName} 
               onChange={(e) => updateForm('reporterName', e.target.value)} 
-              className={`w-full pl-9 p-2 border rounded-lg text-sm bg-gray-50 outline-none focus:bg-white focus:ring-2 ${
-                !formData.reporterName.trim() ? 'border-red-300 focus:ring-red-200' : 'border-gray-300 focus:ring-blue-200'
+              className={`w-full pl-10 pr-3 py-3 border rounded-2xl text-sm font-medium bg-slate-50/70 focus:bg-white outline-none focus:ring-4 transition-all ${
+                !formData.reporterName.trim()
+                  ? 'border-amber-300 focus:border-amber-500 focus:ring-amber-500/10'
+                  : 'border-slate-200 focus:border-indigo-500 focus:ring-indigo-500/10'
               }`}
             />
           </div>
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Prioridad</label>
-        <div className="flex gap-2">
-          {(['normal', 'urgente'] as const).map(p => (
-            <button
-              type="button"
-              key={p}
-              onClick={() => updateForm('priority', p)}
-              className={`flex-1 py-1.5 text-sm border rounded-lg capitalize font-medium transition-colors ${
-                formData.priority === p
-                  ? (p === 'urgente' ? 'bg-red-100 border-red-500 text-red-700' : 'bg-green-100 border-green-500 text-green-700')
-                  : 'bg-white hover:bg-gray-50'
-              }`}
-            >
-              {p}
-            </button>
-          ))}
+      {/* Selector de Prioridad */}
+      <div className="space-y-2">
+        <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500">
+          Nivel de Urgencia
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => updateForm('priority', 'normal')}
+            className={`p-3 rounded-2xl border text-left transition-all flex items-center gap-3 ${
+              formData.priority === 'normal'
+                ? 'bg-emerald-50/90 border-emerald-500 text-emerald-900 ring-2 ring-emerald-500/15'
+                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
+              formData.priority === 'normal' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
+            }`}>
+              {formData.priority === 'normal' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+            </div>
+            <div>
+              <div className="text-xs font-extrabold">Prioridad Normal</div>
+              <div className="text-[11px] opacity-75">Para revisión en el parte habitual</div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => updateForm('priority', 'urgente')}
+            className={`p-3 rounded-2xl border text-left transition-all flex items-center gap-3 ${
+              formData.priority === 'urgente'
+                ? 'bg-rose-50/90 border-rose-500 text-rose-900 ring-2 ring-rose-500/15'
+                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
+              formData.priority === 'urgente' ? 'border-rose-600 bg-rose-600' : 'border-slate-300'
+            }`}>
+              {formData.priority === 'urgente' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+            </div>
+            <div>
+              <div className="text-xs font-extrabold flex items-center gap-1">
+                Urgente <AlertCircle size={12} className="text-rose-600" />
+              </div>
+              <div className="text-[11px] opacity-75">Impide dar clase o supone un riesgo</div>
+            </div>
+          </button>
         </div>
       </div>
 
+      {/* Botones de acción */}
       <div className="flex flex-col gap-2 pt-2">
         {submitError && (
-          <div className="p-3 bg-red-50 text-red-700 text-sm rounded-lg flex items-center gap-2">
-            <AlertCircle size={16} />
+          <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-2xl flex items-center gap-2">
+            <AlertCircle size={16} className="shrink-0" />
             {submitError}
           </div>
         )}
         <div className="flex gap-3">
-          <button type="button" onClick={handleBack} className="px-4 py-2.5 border rounded-lg hover:bg-gray-50">Atrás</button>
+          <button
+            type="button"
+            onClick={handleBack}
+            className="px-5 py-3.5 border border-slate-200 rounded-2xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            Atrás
+          </button>
           <button 
             type="button"
             onClick={handleSubmit} 
             disabled={!formData.description.trim() || !formData.reporterName.trim() || isSubmitting} 
-            className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg flex items-center justify-center gap-2 font-bold disabled:bg-gray-400 transition-colors"
+            className="flex-1 py-3.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-2xl shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 font-extrabold text-sm disabled:opacity-40 disabled:shadow-none transition-all active:scale-[0.99]"
           >
-            {isSubmitting ? 'Enviando...' : 'Enviar Incidencia'} <Send size={16} />
+            {isSubmitting ? 'Registrando incidencia...' : 'Registrar Incidencia'} <Send size={16} />
           </button>
         </div>
       </div>
@@ -924,6 +1252,7 @@ const StepDetails: React.FC<StepDetailsProps> = ({
   );
 };
 
+// --- Panel de Estadísticas (Dashboard) ---
 interface DashboardProps {
   incidents: Incident[];
 }
@@ -952,74 +1281,99 @@ const Dashboard: React.FC<DashboardProps> = ({ incidents }) => {
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in">
-      <div className="flex items-center justify-between px-1">
-        <h2 className="text-xl font-bold text-gray-800">Estadísticas del Centro</h2>
-        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
-          Total: {total}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Analítica del Centro</h2>
+          <p className="text-xs text-slate-500">Resumen global de incidencias registradas y rendimiento</p>
+        </div>
+        <span className="text-xs font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-full">
+          {total} registros totales
         </span>
       </div>
       
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-xl border shadow-sm">
-          <span className="text-gray-500 text-xs uppercase font-bold">Pendientes</span>
-          <div className="text-3xl font-bold text-yellow-600">{pending}</div>
-          <div className="w-full bg-gray-100 h-1.5 mt-2 rounded-full overflow-hidden">
-            <div className="bg-yellow-500 h-full transition-all" style={{ width: `${pct(pending)}%` }}></div>
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-slate-500 text-xs uppercase font-extrabold tracking-wider">Pendientes</span>
+            <Clock size={18} className="text-amber-500" />
+          </div>
+          <div className="text-3xl font-extrabold text-amber-600">{pending}</div>
+          <div className="w-full bg-slate-100 h-2 mt-3 rounded-full overflow-hidden">
+            <div className="bg-amber-500 h-full transition-all" style={{ width: `${pct(pending)}%` }}></div>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border shadow-sm">
-          <span className="text-gray-500 text-xs uppercase font-bold">Resueltas</span>
-          <div className="text-3xl font-bold text-green-600">{resolved}</div>
-          <div className="w-full bg-gray-100 h-1.5 mt-2 rounded-full overflow-hidden">
-            <div className="bg-green-500 h-full transition-all" style={{ width: `${pct(resolved)}%` }}></div>
+
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-slate-500 text-xs uppercase font-extrabold tracking-wider">Resueltas</span>
+            <CheckCircle2 size={18} className="text-emerald-500" />
+          </div>
+          <div className="text-3xl font-extrabold text-emerald-600">{resolved}</div>
+          <div className="w-full bg-slate-100 h-2 mt-3 rounded-full overflow-hidden">
+            <div className="bg-emerald-500 h-full transition-all" style={{ width: `${pct(resolved)}%` }}></div>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border shadow-sm col-span-2 md:col-span-1">
-          <span className="text-gray-500 text-xs uppercase font-bold">Urgentes Activas</span>
-          <div className="text-3xl font-bold text-red-600">{urgentPending}</div>
-          <p className="text-xs text-gray-400 mt-1">Tasa de resolución: {pct(resolved)}%</p>
+
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs col-span-2 md:col-span-1">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-slate-500 text-xs uppercase font-extrabold tracking-wider">Urgentes Activas</span>
+            <AlertCircle size={18} className="text-rose-500" />
+          </div>
+          <div className="text-3xl font-extrabold text-rose-600">{urgentPending}</div>
+          <p className="text-xs font-semibold text-slate-400 mt-3">Tasa de resolución: <span className="text-slate-700 font-bold">{pct(resolved)}%</span></p>
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-xl border shadow-sm space-y-4">
-        <h3 className="font-bold text-gray-700 flex items-center gap-2"><BarChart3 size={18}/> Por Categoría</h3>
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-blue-700 font-bold">Informática</span>
-              <span>{itCount} ({pct(itCount)}%)</span>
+      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+        <h3 className="font-extrabold text-slate-800 flex items-center gap-2 text-sm">
+          <BarChart3 size={18} className="text-indigo-600" /> Distribución por Departamento
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="p-4 rounded-2xl bg-blue-50/50 border border-blue-100">
+            <div className="flex justify-between items-center text-xs mb-2">
+              <span className="text-blue-800 font-extrabold flex items-center gap-1.5">
+                <Monitor size={14} /> Informática y TIC
+              </span>
+              <span className="font-extrabold text-blue-900">{itCount} ({pct(itCount)}%)</span>
             </div>
-            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-              <div className="bg-blue-500 h-full transition-all" style={{ width: `${pct(itCount)}%` }}></div>
+            <div className="w-full bg-white h-2.5 rounded-full overflow-hidden border border-blue-100">
+              <div className="bg-blue-600 h-full transition-all" style={{ width: `${pct(itCount)}%` }}></div>
             </div>
           </div>
-          <div className="flex-1">
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-orange-700 font-bold">Mantenimiento</span>
-              <span>{maintCount} ({pct(maintCount)}%)</span>
+
+          <div className="p-4 rounded-2xl bg-orange-50/50 border border-orange-100">
+            <div className="flex justify-between items-center text-xs mb-2">
+              <span className="text-orange-800 font-extrabold flex items-center gap-1.5">
+                <Hammer size={14} /> Mantenimiento
+              </span>
+              <span className="font-extrabold text-orange-900">{maintCount} ({pct(maintCount)}%)</span>
             </div>
-            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+            <div className="w-full bg-white h-2.5 rounded-full overflow-hidden border border-orange-100">
               <div className="bg-orange-500 h-full transition-all" style={{ width: `${pct(maintCount)}%` }}></div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-xl border shadow-sm space-y-3">
-        <div>
-          <span className="text-gray-500 text-xs uppercase font-bold">Zona con más incidencias</span>
-          <div className="text-lg font-bold text-gray-800 mt-0.5 truncate">{topBuilding}</div>
+      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-slate-400 text-[11px] uppercase font-extrabold tracking-wider">Desglose por Pabellón</span>
+            <div className="text-base font-extrabold text-slate-900 mt-0.5 truncate">
+              Mayor actividad: <span className="text-indigo-600">{BUILDING_METADATA[topBuilding]?.shortTitle || topBuilding}</span>
+            </div>
+          </div>
         </div>
         {buildingCounts.length > 0 && (
-          <div className="space-y-2 pt-2 border-t">
+          <div className="space-y-3 pt-2 border-t border-slate-100">
             {buildingCounts.map(([bName, count]) => (
-              <div key={bName} className="text-xs space-y-1">
-                <div className="flex justify-between text-gray-600">
+              <div key={bName} className="text-xs space-y-1.5">
+                <div className="flex justify-between text-slate-700 font-semibold">
                   <span className="truncate pr-2">{bName}</span>
-                  <span className="font-semibold shrink-0">{count}</span>
+                  <span className="font-extrabold text-slate-900 shrink-0">{count} ({pct(count)}%)</span>
                 </div>
-                <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-indigo-500 h-full" style={{ width: `${pct(count)}%` }} />
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div className="bg-gradient-to-r from-indigo-500 to-blue-500 h-full rounded-full" style={{ width: `${pct(count)}%` }} />
                 </div>
               </div>
             ))}
@@ -1030,6 +1384,7 @@ const Dashboard: React.FC<DashboardProps> = ({ incidents }) => {
   );
 };
 
+// --- Listado de Incidencias ---
 interface IncidentsListProps {
   loading: boolean;
   incidents: Incident[];
@@ -1050,7 +1405,7 @@ interface IncidentsListProps {
   reopenIncident: (id: string) => void;
   initiateDelete: (id: string) => void;
   onPreviewImage: (imageUrl: string, description: string) => void;
-  onNotify: (msg: string) => void;
+  onOpenQrModal: (building: string, floor: string, room: string) => void;
 }
 
 const IncidentsList: React.FC<IncidentsListProps> = ({ 
@@ -1065,11 +1420,22 @@ const IncidentsList: React.FC<IncidentsListProps> = ({
   exportToCSV, setActiveTab,
   initiateResolve, reopenIncident, initiateDelete,
   onPreviewImage,
-  onNotify
+  onOpenQrModal
 }) => {
-  if (loading) return <div className="p-8 text-center text-gray-500">Cargando...</div>;
+  if (loading) {
+    return (
+      <div className="p-12 text-center space-y-3">
+        <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto" />
+        <p className="text-sm font-semibold text-slate-500">Cargando historial de incidencias...</p>
+      </div>
+    );
+  }
 
   const savedName = localStorage.getItem('school_reporter_name');
+
+  const pendingTotal = incidents.filter(i => i.status === 'pending').length;
+  const urgentTotal = incidents.filter(i => i.status === 'pending' && i.priority === 'urgente').length;
+  const resolvedTotal = incidents.filter(i => i.status === 'resolved').length;
 
   const filtered = incidents.filter(i => {
     const matchStatus = filterStatus === 'all' || i.status === filterStatus;
@@ -1078,6 +1444,7 @@ const IncidentsList: React.FC<IncidentsListProps> = ({
     const matchText = query === '' || 
       (i.description || '').toLowerCase().includes(query) || 
       (i.room || '').toLowerCase().includes(query) ||
+      (i.building || '').toLowerCase().includes(query) ||
       (i.reporterName || '').toLowerCase().includes(query);
     const matchBuilding = filterBuilding === 'all' || i.building === filterBuilding;
     const matchMine = !onlyMyIncidents || Boolean(savedName && i.reporterName?.toLowerCase().trim() === savedName.toLowerCase().trim());
@@ -1085,220 +1452,297 @@ const IncidentsList: React.FC<IncidentsListProps> = ({
     return matchStatus && matchCategory && matchText && matchBuilding && matchMine;
   });
 
-  const copyLink = (building: string, floor: string, room: string) => {
-    const params = new URLSearchParams();
-    params.set('b', building);
-    if (floor && floor !== 'N/A') params.set('f', floor);
-    if (room) params.set('r', room);
-    const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
-    
-    navigator.clipboard.writeText(url).then(() => {
-      onNotify("¡Enlace de aula copiado! Puedes generar un QR con él.");
-    }).catch(() => {
-      onNotify("No se pudo copiar automáticamente el enlace.");
-    });
-  };
-
   return (
-    <div className="pb-20 space-y-4">
-      {/* Panel de Admin y Filtros */}
-      <div className="bg-white p-4 rounded-xl border shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="font-bold text-gray-800">Filtros y Gestión</h3>
+    <div className="pb-24 space-y-5 animate-in fade-in duration-300">
+      {/* Mini KPIs Rápidos */}
+      <div className="grid grid-cols-3 gap-3">
+        <button
+          type="button"
+          onClick={() => setFilterStatus(filterStatus === 'pending' ? 'all' : 'pending')}
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
+            filterStatus === 'pending'
+              ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-400/20'
+              : 'bg-white border-slate-200/80 hover:border-amber-300'
+          }`}
+        >
+          <div className="text-[11px] font-extrabold uppercase tracking-wider text-amber-700">Pendientes</div>
+          <div className="text-2xl font-extrabold text-slate-900 mt-0.5">{pendingTotal}</div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFilterStatus('pending')}
+          className="p-3.5 rounded-2xl border bg-white border-slate-200/80 hover:border-rose-300 text-left transition-all"
+        >
+          <div className="text-[11px] font-extrabold uppercase tracking-wider text-rose-600 flex items-center gap-1">
+            Urgentes {urgentTotal > 0 && <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />}
+          </div>
+          <div className="text-2xl font-extrabold text-rose-600 mt-0.5">{urgentTotal}</div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFilterStatus(filterStatus === 'resolved' ? 'all' : 'resolved')}
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
+            filterStatus === 'resolved'
+              ? 'bg-emerald-50 border-emerald-400 ring-2 ring-emerald-400/20'
+              : 'bg-white border-slate-200/80 hover:border-emerald-300'
+          }`}
+        >
+          <div className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-700">Resueltas</div>
+          <div className="text-2xl font-extrabold text-slate-900 mt-0.5">{resolvedTotal}</div>
+        </button>
+      </div>
+
+      {/* Panel de Filtros y Búsqueda */}
+      <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-3.5">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+            <Filter size={15} className="text-indigo-600" /> Búsqueda y Filtros
+          </h3>
           {savedName && (
             <button
               type="button"
               onClick={() => setOnlyMyIncidents(!onlyMyIncidents)}
-              className={`text-xs px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 transition-colors ${onlyMyIncidents ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}
+              className={`text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all border ${
+                onlyMyIncidents
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+              }`}
             >
-              <User size={14} /> Mis Incidencias
+              <User size={13} /> Mis reportes ({savedName})
             </button>
           )}
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2.5">
           <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Buscar por texto, aula o nombre..." 
+              placeholder="Buscar por avería, aula, profesor..." 
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 border rounded-lg focus:ring-2 focus:ring-blue-200 outline-none"
+              className="w-full pl-10 pr-8 py-2.5 text-sm bg-slate-50 focus:bg-white border border-slate-200 focus:border-indigo-500 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
             />
+            {filterText && (
+              <button
+                type="button"
+                onClick={() => setFilterText('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
           <select 
             value={filterBuilding}
             onChange={(e) => setFilterBuilding(e.target.value)}
-            className="text-sm border rounded-lg bg-gray-50 px-2 w-1/3 truncate"
+            className="text-xs font-semibold border border-slate-200 rounded-2xl bg-slate-50 px-3.5 py-2.5 sm:w-56 truncate outline-none focus:border-indigo-500"
           >
-            <option value="all">Todos los edificios</option>
-            {BUILDINGS.map(b => <option key={b} value={b}>{b}</option>)}
+            <option value="all">🏢 Todos los edificios</option>
+            {BUILDINGS.map(b => <option key={b} value={b}>{BUILDING_METADATA[b]?.shortTitle || b}</option>)}
           </select>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-1">
-          <div className="flex gap-1.5 overflow-x-auto">
-            <button type="button" onClick={() => setFilterStatus('all')} className={`px-3 py-1 rounded-full border ${filterStatus === 'all' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white'}`}>Todas</button>
-            <button type="button" onClick={() => setFilterStatus('pending')} className={`px-3 py-1 rounded-full border ${filterStatus === 'pending' ? 'bg-yellow-100 border-yellow-400 text-yellow-800 font-medium' : 'bg-white'}`}>Pendientes</button>
-            <button type="button" onClick={() => setFilterStatus('resolved')} className={`px-3 py-1 rounded-full border ${filterStatus === 'resolved' ? 'bg-green-100 border-green-400 text-green-800 font-medium' : 'bg-white'}`}>Resueltas</button>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-1 border-t border-slate-100">
+          <div className="flex gap-1.5 overflow-x-auto py-0.5">
+            <button type="button" onClick={() => setFilterStatus('all')} className={`px-3 py-1.5 rounded-xl font-bold border transition-all ${filterStatus === 'all' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>Todas</button>
+            <button type="button" onClick={() => setFilterStatus('pending')} className={`px-3 py-1.5 rounded-xl font-bold border transition-all ${filterStatus === 'pending' ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>Pendientes</button>
+            <button type="button" onClick={() => setFilterStatus('resolved')} className={`px-3 py-1.5 rounded-xl font-bold border transition-all ${filterStatus === 'resolved' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>Resueltas</button>
           </div>
-          <div className="flex gap-1.5 overflow-x-auto">
-            <button type="button" onClick={() => setFilterCategory('all')} className={`px-2.5 py-1 rounded-full border ${filterCategory === 'all' ? 'bg-gray-200 text-gray-800 font-medium' : 'bg-white text-gray-600'}`}>Ambas áreas</button>
-            <button type="button" onClick={() => setFilterCategory('maintenance')} className={`px-2.5 py-1 rounded-full border flex items-center gap-1 ${filterCategory === 'maintenance' ? 'bg-orange-100 border-orange-300 text-orange-800 font-medium' : 'bg-white text-gray-600'}`}><Hammer size={11} /> Mant.</button>
-            <button type="button" onClick={() => setFilterCategory('it')} className={`px-2.5 py-1 rounded-full border flex items-center gap-1 ${filterCategory === 'it' ? 'bg-blue-100 border-blue-300 text-blue-800 font-medium' : 'bg-white text-gray-600'}`}><Monitor size={11} /> Info.</button>
+          <div className="flex gap-1.5 overflow-x-auto py-0.5">
+            <button type="button" onClick={() => setFilterCategory('all')} className={`px-3 py-1.5 rounded-xl font-bold border transition-all ${filterCategory === 'all' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-white text-slate-600 border-slate-200'}`}>Ambas áreas</button>
+            <button type="button" onClick={() => setFilterCategory('maintenance')} className={`px-3 py-1.5 rounded-xl font-bold border flex items-center gap-1 transition-all ${filterCategory === 'maintenance' ? 'bg-orange-100 border-orange-300 text-orange-800' : 'bg-white text-slate-600 border-slate-200'}`}><Hammer size={12} /> Mant.</button>
+            <button type="button" onClick={() => setFilterCategory('it')} className={`px-3 py-1.5 rounded-xl font-bold border flex items-center gap-1 transition-all ${filterCategory === 'it' ? 'bg-blue-100 border-blue-300 text-blue-800' : 'bg-white text-slate-600 border-slate-200'}`}><Monitor size={12} /> Info.</button>
           </div>
         </div>
       </div>
       
       {/* Herramientas de Admin (Exportar y Stats) */}
       {isAdmin && (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           <button 
             type="button"
             onClick={exportToCSV}
-            className="py-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+            className="py-3 px-4 bg-emerald-50 hover:bg-emerald-100/80 text-emerald-800 border border-emerald-200 rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 transition-colors shadow-2xs"
           >
-            <Download size={14} /> Exportar Excel (CSV)
+            <Download size={15} /> Exportar Excel (CSV)
           </button>
           <button 
             type="button"
             onClick={() => setActiveTab('stats')}
-            className="py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+            className="py-3 px-4 bg-indigo-50 hover:bg-indigo-100/80 text-indigo-800 border border-indigo-200 rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 transition-colors shadow-2xs"
           >
-            <BarChart3 size={14} /> Ver Estadísticas
+            <BarChart3 size={15} /> Panel de Estadísticas
           </button>
         </div>
       )}
 
+      {/* Listado de Tarjetas */}
       {filtered.length === 0 ? (
-        <div className="text-center py-10 text-gray-400">No se encontraron incidencias</div>
+        <div className="bg-white rounded-3xl border border-slate-200/80 text-center py-14 px-4 space-y-2">
+          <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+            <Search size={22} />
+          </div>
+          <div className="text-sm font-bold text-slate-700">No se encontraron incidencias con estos filtros</div>
+          <p className="text-xs text-slate-400">Prueba a limpiar la búsqueda o cambiar el estado seleccionado.</p>
+        </div>
       ) : (
-        filtered.map((incident) => {
-          const isIT = incident.category === 'it';
-          const cardStyle = isIT ? 'bg-blue-50/50 border-blue-100' : 'bg-orange-50/50 border-orange-100';
-          
-          return (
-            <div 
-              key={incident.id} 
-              className={`p-4 rounded-xl border shadow-sm transition-all relative overflow-hidden ${
-                incident.status === 'resolved' ? 'bg-gray-50 border-gray-200 opacity-80' : cardStyle
-              } ${incident.priority === 'urgente' && incident.status === 'pending' ? 'border-l-4 border-l-red-500 ring-1 ring-red-100' : ''}`}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex items-center gap-2">
-                  <span className={`p-1.5 rounded-lg ${isIT ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
-                    {isIT ? <Monitor size={14} /> : <Hammer size={14} />}
-                  </span>
-                  {incident.priority === 'urgente' && incident.status === 'pending' && (
-                    <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                      <AlertCircle size={10} /> Urgente
-                    </span>
-                  )}
-                </div>
-                 
-                <div className="flex gap-2">
-                  {isAdmin && (
-                    <button 
-                      type="button"
-                      onClick={() => copyLink(incident.building, incident.floor, incident.room)}
-                      className="p-1.5 text-gray-500 hover:text-blue-600 bg-white/80 rounded-lg border border-gray-200"
-                      title="Copiar enlace directo del aula para QR"
-                    >
-                      <QrCode size={16} />
-                    </button>
-                  )}
-                  {isAdmin ? (
-                    <>
-                      {incident.status === 'pending' ? (
-                        <button
-                          type="button"
-                          onClick={() => initiateResolve(incident.id)}
-                          className="text-xs font-bold px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-sm"
-                        >
-                          ✓ Resolver
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => reopenIncident(incident.id)}
-                          className="text-xs font-bold px-3 py-1.5 bg-white border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50"
-                        >
-                          Reabrir
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => initiateDelete(incident.id)}
-                        className="p-1.5 text-red-500 bg-red-50 hover:bg-red-100 rounded-lg border border-red-100"
-                        title="Eliminar incidencia"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </>
-                  ) : (
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium flex items-center gap-1 ${incident.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {incident.status === 'resolved' ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                      {incident.status === 'resolved' ? 'Resuelto' : 'Pendiente'}
-                    </span>
-                  )}
-                </div>
-              </div>
+        <div className="space-y-3">
+          {filtered.map((incident) => {
+            const isIT = incident.category === 'it';
+            const isResolved = incident.status === 'resolved';
+            const isUrgent = incident.priority === 'urgente' && !isResolved;
+            const shortBuilding = BUILDING_METADATA[incident.building]?.shortTitle || incident.building;
+            
+            return (
+              <div 
+                key={incident.id} 
+                className={`p-5 rounded-3xl border transition-all relative overflow-hidden bg-white ${
+                  isResolved
+                    ? 'border-slate-200/80 opacity-80 bg-slate-50/60'
+                    : isUrgent
+                    ? 'border-rose-300 shadow-md shadow-rose-500/5 ring-1 ring-rose-100'
+                    : 'border-slate-200/90 hover:border-slate-300 shadow-xs'
+                }`}
+              >
+                {/* Barra lateral de acento */}
+                <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
+                  isResolved ? 'bg-emerald-500' : isUrgent ? 'bg-rose-500' : isIT ? 'bg-blue-500' : 'bg-orange-500'
+                }`} />
 
-              <div className="mb-1">
-                <h3 className={`font-semibold text-gray-800 ${incident.status === 'resolved' ? 'line-through text-gray-500' : ''}`}>
-                  {incident.description}
-                </h3>
-                <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
-                  <span className="font-medium text-gray-500" title={formatDate(incident.createdAt)}>
-                    {getRelativeTime(incident.createdAt)}
-                  </span>
-                  {incident.reporterName && (
-                    <>
-                      <span>•</span>
-                      <span className="flex items-center gap-1 text-gray-500 font-medium">
-                        <User size={10} /> {incident.reporterName}
+                <div className="flex justify-between items-start gap-3 mb-2.5 pl-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-extrabold ${
+                      isIT ? 'bg-blue-50 text-blue-700 border border-blue-200/60' : 'bg-orange-50 text-orange-700 border border-orange-200/60'
+                    }`}>
+                      {isIT ? <Monitor size={13} /> : <Hammer size={13} />}
+                      {isIT ? 'Informática' : 'Mantenimiento'}
+                    </span>
+
+                    {isUrgent && (
+                      <span className="bg-rose-100 text-rose-700 border border-rose-200 text-xs px-2.5 py-1 rounded-xl font-extrabold flex items-center gap-1">
+                        <AlertCircle size={12} /> Urgente
                       </span>
-                    </>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex flex-wrap gap-2 text-xs text-gray-500 mt-2">
-                <span className="flex items-center gap-1 bg-white border px-2 py-1 rounded">
-                  <Building size={10} /> {incident.building}
-                </span>
-                {incident.floor && incident.floor !== 'N/A' && (
-                  <span className="flex items-center gap-1 bg-white border px-2 py-1 rounded">
-                    <MapPin size={10} /> {incident.floor}
-                  </span>
-                )}
-                <span className="flex items-center gap-1 bg-white border px-2 py-1 rounded">
-                  <span className="font-bold">{incident.room}</span>
-                </span>
-                {incident.imageData && (
-                  <button
-                    type="button"
-                    onClick={() => onPreviewImage(incident.imageData!, incident.description)}
-                    className="flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-600 px-2 py-1 rounded border border-blue-200 cursor-pointer transition-colors"
-                  >
-                    <Eye size={12} /> Ver foto adjunta
-                  </button>
-                )}
-              </div>
-
-              {incident.status === 'resolved' && incident.resolutionNote && (
-                <div className="mt-3 bg-green-50 p-2 rounded-lg border border-green-100 text-xs text-green-800 flex gap-2 items-start">
-                  <FileText size={14} className="mt-0.5 shrink-0" />
-                  <div>
-                    <span className="font-bold">Resolución:</span> {incident.resolutionNote}
-                    <div className="text-[10px] text-green-600 mt-1">{getRelativeTime(incident.resolvedAt)}</div>
+                    )}
+                  </div>
+                   
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {isAdmin && (
+                      <button 
+                        type="button"
+                        onClick={() => onOpenQrModal(incident.building, incident.floor, incident.room)}
+                        className="p-2 text-slate-500 hover:text-indigo-600 bg-slate-50 hover:bg-indigo-50 rounded-xl border border-slate-200 transition-colors"
+                        title="Generar código QR o enlace directo de este aula"
+                      >
+                        <QrCode size={15} />
+                      </button>
+                    )}
+                    {isAdmin ? (
+                      <>
+                        {incident.status === 'pending' ? (
+                          <button
+                            type="button"
+                            onClick={() => initiateResolve(incident.id)}
+                            className="text-xs font-extrabold px-3.5 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 shadow-xs flex items-center gap-1 transition-colors"
+                          >
+                            <Check size={14} /> Resolver
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => reopenIncident(incident.id)}
+                            className="text-xs font-bold px-3 py-1.5 bg-white border border-slate-300 text-slate-600 rounded-xl hover:bg-slate-50"
+                          >
+                            Reabrir
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => initiateDelete(incident.id)}
+                          className="p-2 text-rose-500 bg-rose-50 hover:bg-rose-100 rounded-xl border border-rose-100 transition-colors"
+                          title="Eliminar incidencia"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </>
+                    ) : (
+                      <span className={`text-xs px-3 py-1 rounded-full font-extrabold flex items-center gap-1.5 border ${
+                        isResolved
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                      }`}>
+                        {isResolved ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                        {isResolved ? 'Resuelta' : 'Pendiente'}
+                      </span>
+                    )}
                   </div>
                 </div>
-              )}
-            </div>
-          );
-        })
+
+                {/* Descripción principal */}
+                <div className="pl-1 mb-3">
+                  <h3 className={`text-base font-extrabold leading-snug ${
+                    isResolved ? 'line-through text-slate-400' : 'text-slate-900'
+                  }`}>
+                    {incident.description}
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-1.5">
+                    <span className="font-semibold text-slate-500" title={formatDate(incident.createdAt)}>
+                      {getRelativeTime(incident.createdAt)}
+                      {incident.createdAt?.seconds ? ` (${formatDate(incident.createdAt)})` : ''}
+                    </span>
+                    {incident.reporterName && (
+                      <>
+                        <span>•</span>
+                        <span className="inline-flex items-center gap-1 text-slate-600 font-bold">
+                          <User size={11} className="text-slate-400" /> {incident.reporterName}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Etiquetas de ubicación y foto */}
+                <div className="pl-1 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 font-semibold px-2.5 py-1 rounded-xl border border-slate-200/80">
+                    <Building size={11} className="text-slate-500" /> {shortBuilding}
+                  </span>
+                  {incident.floor && incident.floor !== 'N/A' && (
+                    <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 font-semibold px-2.5 py-1 rounded-xl border border-slate-200/80">
+                      <Layers size={11} className="text-slate-500" /> {incident.floor}
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-800 font-extrabold px-2.5 py-1 rounded-xl border border-indigo-200/70">
+                    <MapPin size={11} className="text-indigo-600" /> {incident.room}
+                  </span>
+                  {incident.imageData && (
+                    <button
+                      type="button"
+                      onClick={() => onPreviewImage(incident.imageData!, incident.description)}
+                      className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1 rounded-xl shadow-2xs cursor-pointer transition-colors"
+                    >
+                      <Eye size={12} /> Ver foto
+                    </button>
+                  )}
+                </div>
+
+                {/* Nota de resolución */}
+                {isResolved && incident.resolutionNote && (
+                  <div className="mt-3.5 ml-1 bg-emerald-50/90 p-3 rounded-2xl border border-emerald-200/80 text-xs text-emerald-900 flex gap-2.5 items-start">
+                    <CheckCircle2 size={15} className="mt-0.5 text-emerald-600 shrink-0" />
+                    <div>
+                      <span className="font-extrabold">Solución aplicada:</span> {incident.resolutionNote}
+                      <div className="text-[11px] text-emerald-600 font-semibold mt-0.5">
+                        {getRelativeTime(incident.resolvedAt)} {incident.resolvedAt?.seconds ? `• ${formatDate(incident.resolvedAt)}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
@@ -1348,6 +1792,9 @@ export default function App() {
   // Modal de vista previa de imagen en grande
   const [previewModalData, setPreviewModalData] = useState<{ url: string; title: string } | null>(null);
 
+  // Modal de Código QR de aula
+  const [qrModalData, setQrModalData] = useState<{ building: string; floor: string; room: string; url: string } | null>(null);
+
   // Notificación ligera (Toast)
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -1375,8 +1822,6 @@ export default function App() {
         floor: pFloor || (pBuilding === "Otros Espacios Comunes" ? 'N/A' : ''),
         room: pRoom || ''
       }));
-      // Mantenemos el paso 1 para que elija Categoría (Mantenimiento/Informática)
-      // y al pulsarla saltará directamente al paso 3 si la ubicación ya está completa.
       setStep(1);
     }
   }, []);
@@ -1384,10 +1829,8 @@ export default function App() {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // @ts-ignore - Variable inyectada opcionalmente por el entorno
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
           try {
-            // @ts-ignore
             await signInWithCustomToken(auth, __initial_auth_token);
             return;
           } catch (tokenError) {
@@ -1435,7 +1878,6 @@ export default function App() {
       ? Boolean(formData.building && formData.room)
       : Boolean(formData.building && formData.floor && formData.room);
 
-    // Si venía con aula precargada por QR, saltamos directamente a Detalles (Paso 3)
     if (hasCompleteLocation) {
       setStep(3);
     } else {
@@ -1490,7 +1932,6 @@ export default function App() {
           imageData: null,
           reporterName: prev.reporterName
         }));
-        // Limpiamos la URL por si venía de un QR
         window.history.replaceState({}, document.title, window.location.pathname);
         setActiveTab('list');
         setIsSubmitting(false);
@@ -1517,7 +1958,6 @@ export default function App() {
       setShowEasterEgg(true);
       return; 
     }
-    // -------------------------------------
 
     await saveIncidentToFirestore();
   };
@@ -1526,6 +1966,7 @@ export default function App() {
     if (isAdmin) {
       setIsAdmin(false);
       setActiveTab('list');
+      showToast("Sesión de administración cerrada");
     } else {
       setShowAuthModal(true);
       setAdminPin('');
@@ -1589,6 +2030,15 @@ export default function App() {
     } catch (e) { console.error(e); }
   };
 
+  const handleOpenQrModal = (building: string, floor: string, room: string) => {
+    const params = new URLSearchParams();
+    params.set('b', building);
+    if (floor && floor !== 'N/A') params.set('f', floor);
+    if (room) params.set('r', room);
+    const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    setQrModalData({ building, floor, room, url });
+  };
+
   const exportToCSV = () => {
     const headers = ["Fecha", "Solicitante", "Estado", "Categoría", "Prioridad", "Edificio", "Planta", "Aula", "Descripción", "Nota Resolución"];
     const rows = incidents.map(i => [
@@ -1604,7 +2054,6 @@ export default function App() {
       i.resolutionNote ? `"${i.resolutionNote.replace(/"/g, '""')}"` : ''
     ]);
     const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
-    // Añadimos BOM (\uFEFF) para que Microsoft Excel reconozca tildes y eñes en UTF-8
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1616,61 +2065,128 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  if (!user) return <div className="h-screen flex items-center justify-center bg-gray-50 text-gray-500">Cargando aplicación...</div>;
+  const pendingBadgeCount = incidents.filter(i => i.status === 'pending').length;
+
+  if (!user) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-slate-50 text-slate-500 gap-3">
+        <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+        <span className="text-sm font-semibold">Conectando con el sistema del centro...</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-10">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-12 relative">
+      {/* Decoración ambiental superior */}
+      <div className="h-1.5 w-full bg-gradient-to-r from-indigo-600 via-blue-500 to-amber-500 sticky top-0 z-30" />
+
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-20 md:bottom-6 right-4 left-4 md:left-auto z-50 max-w-sm bg-gray-900 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-lg flex items-center justify-between animate-in fade-in slide-in-from-bottom-4">
-          <span>{toastMessage}</span>
-          <button type="button" onClick={() => setToastMessage(null)} className="ml-3 text-gray-400 hover:text-white">
+        <div className="fixed bottom-24 md:bottom-6 right-4 left-4 md:left-auto z-50 max-w-sm bg-slate-900 text-white text-xs font-bold px-4 py-3.5 rounded-2xl shadow-xl flex items-center justify-between animate-in fade-in slide-in-from-bottom-4 border border-slate-700">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+            <span>{toastMessage}</span>
+          </div>
+          <button type="button" onClick={() => setToastMessage(null)} className="ml-3 text-slate-400 hover:text-white">
             <X size={14} />
           </button>
         </div>
       )}
 
       {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-10 px-4 py-3 shadow-sm">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <header className="bg-white/90 backdrop-blur-xl border-b border-slate-200/80 sticky top-1.5 z-20 px-4 py-3 shadow-2xs">
+        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <img 
-              src="https://i.ibb.co/FLS9ybLj/cropped-Colegio-1.png" 
-              alt="Logo Colegio" 
-              className="h-12 w-auto object-contain"
+              src="/san_buenaventura_user_logo.jpeg"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "https://i.ibb.co/FLS9ybLj/cropped-Colegio-1.png";
+              }}
+              alt="Logo Colegio San Buenaventura" 
+              className="h-11 w-11 rounded-2xl object-contain bg-white p-1 border border-slate-200 shadow-2xs shrink-0"
             />
-            <div>
-              <h1 className="font-bold text-lg leading-tight">Gestión de Incidencias</h1>
-              {isAdmin && <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-50 px-1.5 py-0.5 rounded">Modo Admin</span>}
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight truncate">
+                  Gestión de Incidencias
+                </h1>
+                {isAdmin && (
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-700 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-full shrink-0">
+                    Admin
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] font-semibold text-slate-500 truncate">
+                Colegio San Buenaventura • Mantenimiento y TIC
+              </p>
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
-            <div className="hidden md:flex bg-gray-100 p-1 rounded-lg">
-              <button type="button" onClick={() => setActiveTab('new')} className={`px-4 py-1.5 rounded-md text-sm font-medium ${activeTab === 'new' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>Reportar</button>
-              <button type="button" onClick={() => setActiveTab('list')} className={`px-4 py-1.5 rounded-md text-sm font-medium ${activeTab === 'list' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>Historial</button>
-              {isAdmin && <button type="button" onClick={() => setActiveTab('stats')} className={`px-4 py-1.5 rounded-md text-sm font-medium ${activeTab === 'stats' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>Stats</button>}
-            </div>
+          <div className="flex items-center gap-2">
+            <nav className="hidden md:flex bg-slate-100 p-1 rounded-2xl border border-slate-200/60">
+              <button
+                type="button"
+                onClick={() => setActiveTab('new')}
+                className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
+                  activeTab === 'new' ? 'bg-white shadow-xs text-indigo-600' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <PlusCircle size={14} /> Reportar
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('list')}
+                className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
+                  activeTab === 'list' ? 'bg-white shadow-xs text-indigo-600' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <History size={14} /> Historial
+                {pendingBadgeCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-100 text-amber-800 font-extrabold">
+                    {pendingBadgeCount}
+                  </span>
+                )}
+              </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('stats')}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
+                    activeTab === 'stats' ? 'bg-white shadow-xs text-indigo-600' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <BarChart3 size={14} /> Analítica
+                </button>
+              )}
+            </nav>
              
             {/* Botón Admin en Cabecera */}
             <button 
               type="button"
               onClick={handleAdminAccess}
-              className={`p-2 rounded-lg transition-colors ${isAdmin ? 'bg-red-50 text-red-600' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'}`}
+              className={`p-2.5 rounded-2xl border transition-all ${
+                isAdmin
+                  ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                  : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50 hover:text-slate-700'
+              }`}
               title={isAdmin ? "Salir de Administración" : "Acceso Administración"}
             >
-              {isAdmin ? <Unlock size={20} /> : <Lock size={20} />}
+              {isAdmin ? <Unlock size={18} /> : <Lock size={18} />}
             </button>
           </div>
         </div>
-      </div>
+      </header>
 
-      <main className="max-w-2xl mx-auto p-4 md:p-6">
+      <main className="max-w-3xl mx-auto p-4 sm:p-6">
         {activeTab === 'new' && (
-          <div className="max-w-lg mx-auto bg-white md:shadow-lg md:rounded-2xl p-4 md:p-8 md:border min-h-[50vh] pb-24 md:pb-8 rounded-xl">
+          <div className="bg-white shadow-xl shadow-slate-900/5 rounded-3xl p-5 sm:p-8 border border-slate-200/80 mb-20 md:mb-8">
+            <Stepper currentStep={step} formData={formData} onGoToStep={setStep} />
+
             {step === 1 && (
               <StepCategory 
                 formData={formData}
+                incidents={incidents}
                 onSelectCategory={handleSelectCategory}
                 onEditPreselectedLocation={() => setStep(2)}
               />
@@ -1696,16 +2212,19 @@ export default function App() {
               />
             )}
             {step === 4 && (
-              <div className="flex flex-col items-center justify-center py-12 animate-in zoom-in">
-                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
-                  <CheckCircle2 size={40} className="text-green-600" />
+              <div className="flex flex-col items-center justify-center py-14 text-center animate-in zoom-in duration-300">
+                <div className="w-20 h-20 bg-emerald-100 rounded-3xl flex items-center justify-center mb-5 shadow-lg shadow-emerald-500/15">
+                  <CheckCircle2 size={42} className="text-emerald-600" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-800">¡Incidencia enviada!</h2>
-                <p className="text-sm text-gray-500 mt-1">Gracias por avisar.</p>
+                <h2 className="text-2xl font-extrabold text-slate-900">¡Incidencia registrada!</h2>
+                <p className="text-sm text-slate-500 mt-1 max-w-xs">
+                  El equipo de {formData.category === 'it' ? 'Informática' : 'Mantenimiento'} ya tiene disponible el aviso.
+                </p>
               </div>
             )}
           </div>
         )}
+
         {activeTab === 'list' && (
           <IncidentsList 
             loading={loading}
@@ -1727,28 +2246,52 @@ export default function App() {
             reopenIncident={reopenIncident}
             initiateDelete={initiateDelete}
             onPreviewImage={(url, title) => setPreviewModalData({ url, title })}
-            onNotify={showToast}
+            onOpenQrModal={handleOpenQrModal}
           />
         )}
+
         {activeTab === 'stats' && isAdmin && (
           <Dashboard incidents={incidents} />
         )}
       </main>
 
       {/* Tab Bar Móvil */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t px-6 py-3 flex justify-around z-20 shadow-lg pb-6">
-        <button type="button" onClick={() => setActiveTab('new')} className={`flex flex-col items-center gap-1 ${activeTab === 'new' ? 'text-blue-600' : 'text-gray-400'}`}>
-          <PlusCircle size={24} />
-          <span className="text-xs">Reportar</span>
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-200 px-6 py-2.5 flex justify-around z-20 shadow-lg pb-5">
+        <button
+          type="button"
+          onClick={() => setActiveTab('new')}
+          className={`flex flex-col items-center gap-1 px-4 py-1 rounded-2xl transition-colors ${
+            activeTab === 'new' ? 'text-indigo-600 font-extrabold' : 'text-slate-400 font-medium'
+          }`}
+        >
+          <PlusCircle size={22} />
+          <span className="text-[11px]">Reportar</span>
         </button>
-        <button type="button" onClick={() => setActiveTab('list')} className={`flex flex-col items-center gap-1 ${activeTab === 'list' ? 'text-blue-600' : 'text-gray-400'}`}>
-          <History size={24} />
-          <span className="text-xs">Historial</span>
+        <button
+          type="button"
+          onClick={() => setActiveTab('list')}
+          className={`relative flex flex-col items-center gap-1 px-4 py-1 rounded-2xl transition-colors ${
+            activeTab === 'list' ? 'text-indigo-600 font-extrabold' : 'text-slate-400 font-medium'
+          }`}
+        >
+          <History size={22} />
+          <span className="text-[11px]">Historial</span>
+          {pendingBadgeCount > 0 && (
+            <span className="absolute top-0.5 right-2 bg-amber-500 text-white text-[10px] font-extrabold px-1.5 rounded-full">
+              {pendingBadgeCount}
+            </span>
+          )}
         </button>
         {isAdmin && (
-          <button type="button" onClick={() => setActiveTab('stats')} className={`flex flex-col items-center gap-1 ${activeTab === 'stats' ? 'text-blue-600' : 'text-gray-400'}`}>
-            <BarChart3 size={24} />
-            <span className="text-xs">Stats</span>
+          <button
+            type="button"
+            onClick={() => setActiveTab('stats')}
+            className={`flex flex-col items-center gap-1 px-4 py-1 rounded-2xl transition-colors ${
+              activeTab === 'stats' ? 'text-indigo-600 font-extrabold' : 'text-slate-400 font-medium'
+            }`}
+          >
+            <BarChart3 size={22} />
+            <span className="text-[11px]">Analítica</span>
           </button>
         )}
       </div>
@@ -1756,69 +2299,137 @@ export default function App() {
       {/* Modal de Vista Previa de Foto */}
       {previewModalData && (
         <div
-          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-in fade-in"
+          className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in"
           onClick={() => setPreviewModalData(null)}
         >
           <div
-            className="relative max-w-lg w-full bg-white rounded-2xl overflow-hidden shadow-2xl"
+            className="relative max-w-lg w-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b">
-              <span className="font-semibold text-sm text-gray-800 truncate pr-4">{previewModalData.title}</span>
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+              <span className="font-extrabold text-sm text-slate-800 truncate pr-4">{previewModalData.title}</span>
               <button
                 type="button"
                 onClick={() => setPreviewModalData(null)}
-                className="p-1 rounded-full hover:bg-gray-100 text-gray-500"
+                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-500"
               >
                 <X size={18} />
               </button>
             </div>
-            <div className="bg-black flex items-center justify-center max-h-[75vh]">
+            <div className="bg-slate-950 flex items-center justify-center max-h-[75vh]">
               <img src={previewModalData.url} alt={previewModalData.title} className="max-h-[75vh] w-auto object-contain" />
             </div>
           </div>
         </div>
       )}
 
-      {/* Modales */}
+      {/* Modal de Código QR del Aula */}
+      {qrModalData && (
+        <div
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setQrModalData(null)}
+        >
+          <div
+            className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 text-center space-y-4 animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
+                Acceso Directo QR
+              </span>
+              <button type="button" onClick={() => setQrModalData(null)} className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-extrabold text-slate-900">{qrModalData.room}</h3>
+              <p className="text-xs font-semibold text-slate-500">
+                {BUILDING_METADATA[qrModalData.building]?.shortTitle || qrModalData.building}
+                {qrModalData.floor && qrModalData.floor !== 'N/A' ? ` • ${qrModalData.floor}` : ''}
+              </p>
+            </div>
+
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 inline-block mx-auto">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=${encodeURIComponent(qrModalData.url)}`}
+                alt={`QR ${qrModalData.room}`}
+                className="w-48 h-48 mx-auto rounded-xl"
+              />
+            </div>
+
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Al escanear este QR en el aula, el profesor entrará con la ubicación ya seleccionada.
+            </p>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(qrModalData.url).then(() => {
+                    showToast("¡Enlace del aula copiado al portapapeles!");
+                  });
+                }}
+                className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/20 transition-colors"
+              >
+                <Copy size={14} /> Copiar enlace
+              </button>
+              <button
+                type="button"
+                onClick={() => setQrModalData(null)}
+                className="px-4 py-3 border border-slate-200 rounded-2xl text-xs font-bold text-slate-600 hover:bg-slate-50"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Login Admin */}
       {showAuthModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-sm animate-in zoom-in-95">
-            <h3 className="text-lg font-bold mb-4">Acceso Mantenimiento</h3>
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm animate-in zoom-in-95 shadow-2xl border border-slate-200">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3">
+              <ShieldCheck size={26} />
+            </div>
+            <h3 className="text-lg font-extrabold text-center text-slate-900 mb-1">Acceso Administración</h3>
+            <p className="text-xs text-center text-slate-500 mb-5">Introduce el PIN de coordinación / mantenimiento</p>
             <form onSubmit={submitPin}>
               <input
                 type="password"
-                placeholder="PIN"
+                placeholder="••••"
                 value={adminPin}
                 onChange={e => setAdminPin(e.target.value)}
-                className="w-full p-3 border rounded-lg mb-4 text-center text-2xl tracking-widest"
+                className="w-full p-3.5 bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-2xl mb-4 text-center text-2xl font-extrabold tracking-widest outline-none focus:ring-4 focus:ring-indigo-500/10"
                 autoFocus
               />
-              {loginError && <p className="text-red-500 text-sm mb-4 text-center">PIN Incorrecto</p>}
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setShowAuthModal(false)} className="flex-1 py-3 border rounded-lg">Cancelar</button>
-                <button type="submit" className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-bold">Entrar</button>
+              {loginError && <p className="text-rose-600 text-xs font-bold mb-4 text-center">PIN incorrecto. Inténtalo de nuevo.</p>}
+              <div className="flex gap-2.5">
+                <button type="button" onClick={() => setShowAuthModal(false)} className="flex-1 py-3 border border-slate-200 rounded-2xl text-xs font-bold text-slate-600 hover:bg-slate-50">Cancelar</button>
+                <button type="submit" className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-extrabold shadow-md shadow-indigo-500/20">Acceder</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
+      {/* Modal Resolver Incidencia */}
       {showResolveModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-sm animate-in zoom-in-95">
-            <h3 className="text-lg font-bold mb-2">Resolver Incidencia</h3>
-            <p className="text-sm text-gray-500 mb-4">Añade una nota sobre la solución (opcional):</p>
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm animate-in zoom-in-95 shadow-2xl border border-slate-200">
+            <h3 className="text-lg font-extrabold text-slate-900 mb-1">Resolver Incidencia</h3>
+            <p className="text-xs text-slate-500 mb-4">Indica brevemente la actuación realizada (opcional):</p>
             <textarea
               value={resolveNote}
               onChange={e => setResolveNote(e.target.value)}
-              placeholder="Ej: Pieza cambiada, tornillo apretado..."
-              className="w-full p-3 border rounded-lg mb-4 h-24"
+              placeholder="Ej: Sustituido cable HDMI, cambiada luminaria, reparada cerradura..."
+              className="w-full p-3.5 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-2xl mb-4 h-24 text-sm outline-none"
               autoFocus
             />
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setShowResolveModal(false)} className="flex-1 py-2 border rounded-lg">Cancelar</button>
-              <button type="button" onClick={confirmResolve} className="flex-1 py-2 bg-green-600 text-white rounded-lg font-bold">Confirmar</button>
+            <div className="flex gap-2.5">
+              <button type="button" onClick={() => setShowResolveModal(false)} className="flex-1 py-3 border border-slate-200 rounded-2xl text-xs font-bold text-slate-600">Cancelar</button>
+              <button type="button" onClick={confirmResolve} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-extrabold shadow-md shadow-emerald-500/20">Confirmar</button>
             </div>
           </div>
         </div>
@@ -1826,18 +2437,18 @@ export default function App() {
 
       {/* Modal de Borrado */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-sm animate-in zoom-in-95">
-            <div className="flex flex-col items-center text-center mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-3">
-                <AlertCircle className="text-red-600" size={24} />
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm animate-in zoom-in-95 shadow-2xl border border-slate-200">
+            <div className="flex flex-col items-center text-center mb-5">
+              <div className="w-12 h-12 bg-rose-100 rounded-2xl flex items-center justify-center mb-3">
+                <AlertCircle className="text-rose-600" size={24} />
               </div>
-              <h3 className="text-lg font-bold text-gray-900">¿Borrar incidencia?</h3>
-              <p className="text-sm text-gray-500 mt-1">Esta acción no se puede deshacer.</p>
+              <h3 className="text-lg font-extrabold text-slate-900">¿Eliminar incidencia?</h3>
+              <p className="text-xs text-slate-500 mt-1">Esta acción borrará el registro permanentemente.</p>
             </div>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setShowDeleteModal(false)} className="flex-1 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50">Cancelar</button>
-              <button type="button" onClick={confirmDelete} className="flex-1 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700">Sí, borrar</button>
+            <div className="flex gap-2.5">
+              <button type="button" onClick={() => setShowDeleteModal(false)} className="flex-1 py-3 border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 hover:bg-slate-50">Cancelar</button>
+              <button type="button" onClick={confirmDelete} className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-xs font-extrabold shadow-md shadow-rose-500/20">Sí, borrar</button>
             </div>
           </div>
         </div>
@@ -1858,7 +2469,7 @@ export default function App() {
                   setShowEasterEgg(false);
                   await saveIncidentToFirestore();
                 }}
-                className="px-6 py-2 bg-white text-black font-semibold rounded-full transition-all text-sm hover:bg-gray-200"
+                className="px-6 py-2.5 bg-white text-black font-bold rounded-full transition-all text-sm hover:bg-gray-200"
               >
                 Enviar incidencia igualmente
               </button>
@@ -1871,7 +2482,7 @@ export default function App() {
                     category: '', building: '', floor: '', room: '', description: '', priority: 'normal', imageData: null, reporterName: prev.reporterName
                   }));
                 }}
-                className="px-6 py-2 border border-white/30 text-white/70 hover:text-white hover:border-white rounded-full transition-all text-sm"
+                className="px-6 py-2.5 border border-white/30 text-white/70 hover:text-white hover:border-white rounded-full transition-all text-sm"
               >
                 Cerrar
               </button>
@@ -1879,10 +2490,11 @@ export default function App() {
           </div>
         </div>
       )}
-      <div className="text-xs text-gray-300 text-center pb-20 md:pb-4 opacity-50">
-        {APP_VERSION}
-      </div>
-      <div className="text-[1px] text-gray-100 select-none text-center">Хэрэв та үүнийг олвол та бас монголоор ярьдаг гэсэн үг</div>
+
+      <footer className="text-[11px] font-semibold text-slate-400 text-center pb-20 md:pb-4">
+        Colegio San Buenaventura • Sistema de Incidencias {APP_VERSION}
+      </footer>
+      <div className="text-[1px] text-slate-100 select-none text-center">Хэрэв та үүнийг олвол та бас монголоор ярьдаг гэсэн үг</div>
     </div>
   );
 }
