@@ -40,7 +40,11 @@ import {
   ArrowLeft,
   ChevronDown,
   Copy,
-  Layers
+  Layers,
+  Mail,
+  Settings,
+  ExternalLink,
+  Bell
 } from 'lucide-react';
 import { initializeApp } from "firebase/app";
 import { 
@@ -56,6 +60,8 @@ import {
   addDoc, 
   onSnapshot, 
   doc, 
+  setDoc,
+  getDoc,
   updateDoc, 
   deleteDoc, 
   serverTimestamp,
@@ -68,6 +74,13 @@ type PriorityType = 'normal' | 'urgente';
 type IncidentStatus = 'pending' | 'resolved';
 type TabType = 'new' | 'list' | 'stats';
 
+interface TeacherDirectoryEntry {
+  name: string;
+  etapa: 'Infantil' | 'Primaria' | 'Secundaria / Bach.' | 'PAS / Otro';
+  email: string;
+  info?: string;
+}
+
 interface IncidentFormData {
   category: CategoryType;
   building: string;
@@ -77,6 +90,7 @@ interface IncidentFormData {
   priority: PriorityType;
   imageData: string | null;
   reporterName: string;
+  reporterEmail: string;
 }
 
 interface Incident extends IncidentFormData {
@@ -86,6 +100,8 @@ interface Incident extends IncidentFormData {
   resolvedAt?: Timestamp | { seconds: number; nanoseconds?: number } | null;
   resolutionNote?: string | null;
   authorId?: string;
+  emailNotifiedCreated?: boolean;
+  emailNotifiedResolved?: boolean;
 }
 
 // --- Configuración de Firebase ---
@@ -104,7 +120,138 @@ const db = getFirestore(app);
 const appId = 'datos_colegio';
 
 // --- Versión de la App ---
-const APP_VERSION = 'v5.0';
+const APP_VERSION = 'v5.2';
+
+// --- Directorio Oficial del Claustro (Colegio San Buenaventura) ---
+const SCHOOL_STAFF_DIRECTORY: TeacherDirectoryEntry[] = [
+  // Infantil
+  { name: "Alejandra Calvo", etapa: "Infantil", email: "alejandracalvo@sanbuenaventura.org" },
+  { name: "Alejandra Pérez Villalba", etapa: "Infantil", email: "alejandraperez@sanbuenaventura.org", info: "5 Años B" },
+  { name: "Daniel Asenjo García", etapa: "Infantil", email: "danielasenjo@sanbuenaventura.org", info: "3 Años A / PT" },
+  { name: "Elena Díaz Martín", etapa: "Infantil", email: "elenadiaz@sanbuenaventura.org", info: "3 Años B" },
+  { name: "Gema del Pozo Villegas", etapa: "Infantil", email: "gemadelpozo@sanbuenaventura.org", info: "Apoyo Infantil" },
+  { name: "María de las Nieves Jiménez Jiménez", etapa: "Infantil", email: "nievesjimenez@sanbuenaventura.org", info: "4 Años A" },
+  { name: "María Jesús Parras Maeso", etapa: "Infantil", email: "mariajesusparras@sanbuenaventura.org", info: "5 Años A" },
+  { name: "Marta Pilar Rodríguez Centeno", etapa: "Infantil", email: "martarodriguez@sanbuenaventura.org", info: "Psicomotricidad" },
+  { name: "Nuria Romero Sanz", etapa: "Infantil", email: "nuriaromero@sanbuenaventura.org" },
+  { name: "Susana López Gómez", etapa: "Infantil", email: "susanalopez@sanbuenaventura.org", info: "4 Años B" },
+  { name: "Teresa (Infantil)", etapa: "Infantil", email: "teresa@sanbuenaventura.org" },
+
+  // Primaria
+  { name: "Álvaro Fernández Hervás", etapa: "Primaria", email: "alvarofernandez@sanbuenaventura.org" },
+  { name: "Álvaro Ortega Bonilla", etapa: "Primaria", email: "alvaroortega@sanbuenaventura.org", info: "5º EP A" },
+  { name: "Beatriz de León Ruiz", etapa: "Primaria", email: "beadeleon@sanbuenaventura.org", info: "3º EP B" },
+  { name: "Cristina Duerto", etapa: "Primaria", email: "cristinaduerto@sanbuenaventura.org" },
+  { name: "David Sagaseta Jiménez", etapa: "Primaria", email: "dsagaseta@sanbuenaventura.org", info: "Ed. Física / Inglés" },
+  { name: "Diego López", etapa: "Primaria", email: "diegolopez@sanbuenaventura.org", info: "Orientación / PT" },
+  { name: "Feli Priego Perete", etapa: "Primaria", email: "felipriego@sanbuenaventura.org", info: "6º EP B" },
+  { name: "Isabel Hidalgo Castañeda", etapa: "Primaria", email: "isabelhidalgo@sanbuenaventura.org", info: "2º EP A" },
+  { name: "Isabel Peña Escudero", etapa: "Primaria", email: "isabelpena@sanbuenaventura.org", info: "5º EP B" },
+  { name: "Ismael Cava", etapa: "Primaria", email: "ismaelcava@sanbuenaventura.org", info: "6º EP B" },
+  { name: "Jorge Cabana", etapa: "Primaria", email: "jorgecabana@sanbuenaventura.org", info: "Ed. Física / Science" },
+  { name: "José Antonio Utrillas Sánchez", etapa: "Primaria", email: "joseantonioutrillas@sanbuenaventura.org" },
+  { name: "José Manuel Santos Alejano", etapa: "Primaria", email: "josemanuelsantos@sanbuenaventura.org", info: "Dirección EI/EP" },
+  { name: "Juan Antonio Alfonso Pizarro", etapa: "Primaria", email: "juanalfonso@sanbuenaventura.org", info: "1º EP A" },
+  { name: "Julia Rodríguez Gutiérrez", etapa: "Primaria", email: "juliarodriguez@sanbuenaventura.org" },
+  { name: "Lorena Moreno Barrigas", etapa: "Primaria", email: "lorenamoreno@sanbuenaventura.org", info: "4º EP B" },
+  { name: "María Belén Hernando Martín", etapa: "Primaria", email: "belenhernando@sanbuenaventura.org", info: "2º EP A" },
+  { name: "María del Carmen Ibáñez Abad", etapa: "Primaria", email: "carmenibanez@sanbuenaventura.org", info: "2º EP B" },
+  { name: "María Pilar Pérez Fernández", etapa: "Primaria", email: "pilarperez@sanbuenaventura.org", info: "6º EP A" },
+  { name: "María Sánchez", etapa: "Primaria", email: "mariasanchez@sanbuenaventura.org" },
+  { name: "María Vázquez", etapa: "Primaria", email: "mariavazquez@sanbuenaventura.org" },
+  { name: "Nuria Jarillo García", etapa: "Primaria", email: "nuriajarillo@sanbuenaventura.org", info: "3º EP A" },
+  { name: "Óscar Manuel Molina Márquez", etapa: "Primaria", email: "oscarmolina@sanbuenaventura.org", info: "4º EP A" },
+  { name: "Paula Gómez Buil", etapa: "Primaria", email: "paulagomez@sanbuenaventura.org" },
+  { name: "Paula González", etapa: "Primaria", email: "paulagonzalez@sanbuenaventura.org" },
+  { name: "Pedro Vega Verdeja", etapa: "Primaria", email: "pedrovega@sanbuenaventura.org", info: "PT / AL" },
+  { name: "Pedro Zapata Paredes", etapa: "Primaria", email: "pedrozapata@sanbuenaventura.org" },
+  { name: "Pilar Fuentes Saavedra", etapa: "Primaria", email: "pilarfuentes@sanbuenaventura.org", info: "1º EP B / Música" },
+  { name: "Rubén Recio Molina", etapa: "Primaria", email: "rubenrecio@sanbuenaventura.org", info: "TIC / Robótica" },
+
+  // Secundaria y Bachillerato
+  { name: "Alejandro Gaspar", etapa: "Secundaria / Bach.", email: "alejandrogaspar@sanbuenaventura.org" },
+  { name: "Almudena Martínez Fernández", etapa: "Secundaria / Bach.", email: "almudenamartinez@sanbuenaventura.org", info: "Dibujo" },
+  { name: "Amalia del Carmen Paris Cuéllar", etapa: "Secundaria / Bach.", email: "amaliaparis@sanbuenaventura.org", info: "1º BTO A" },
+  { name: "Ana Isabel Álvarez Gómez", etapa: "Secundaria / Bach.", email: "anaalvarez@sanbuenaventura.org", info: "2º ESO B" },
+  { name: "Ángel Castellanos Cuenca", etapa: "Secundaria / Bach.", email: "angelcastellanos@sanbuenaventura.org", info: "3º ESO B" },
+  { name: "Antonio Jesús Royo Tomás", etapa: "Secundaria / Bach.", email: "antonioroyo@sanbuenaventura.org", info: "Música" },
+  { name: "Carolina González García", etapa: "Secundaria / Bach.", email: "carolinagonzalez@sanbuenaventura.org", info: "Física y Química" },
+  { name: "Daniel Lozano", etapa: "Secundaria / Bach.", email: "daniellozano@sanbuenaventura.org" },
+  { name: "Fidel Jorge Aguilar López", etapa: "Secundaria / Bach.", email: "fidelaguilar@sanbuenaventura.org", info: "1º ESO B" },
+  { name: "Florencio Díez Sanz", etapa: "Secundaria / Bach.", email: "florenciodiez@sanbuenaventura.org", info: "2º BTO A" },
+  { name: "Francisco Cezón Gil", etapa: "Secundaria / Bach.", email: "franciscocezon@sanbuenaventura.org", info: "4º ESO A" },
+  { name: "Francisco Javier Félix Fernández", etapa: "Secundaria / Bach.", email: "javierfelix@sanbuenaventura.org", info: "Dirección General" },
+  { name: "Francisco José Lozano Maya", etapa: "Secundaria / Bach.", email: "franciscolozano@sanbuenaventura.org", info: "Filosofía" },
+  { name: "Isabel Ezquerra", etapa: "Secundaria / Bach.", email: "isabelezquerra@sanbuenaventura.org" },
+  { name: "Jesús Abel García-Cezón Roldán", etapa: "Secundaria / Bach.", email: "abelgarciacezon@sanbuenaventura.org", info: "Matemáticas" },
+  { name: "José Antonio Gaspar Laborie", etapa: "Secundaria / Bach.", email: "joseantoniogaspar@sanbuenaventura.org", info: "Inglés" },
+  { name: "José Manuel Pulido Palomo", etapa: "Secundaria / Bach.", email: "josemanuelpulido@sanbuenaventura.org", info: "Tecnología / TIC" },
+  { name: "Juan Luis Cormenzana Carpio", etapa: "Secundaria / Bach.", email: "juanluiscormenzana@sanbuenaventura.org", info: "4º ESO B" },
+  { name: "Luis González Ludeña", etapa: "Secundaria / Bach.", email: "luisgonzalez@sanbuenaventura.org", info: "Biología" },
+  { name: "Luis Redruello", etapa: "Secundaria / Bach.", email: "luisredruello@sanbuenaventura.org", info: "Dirección ESO/BTO" },
+  { name: "María del Carmen Valera Soriano", etapa: "Secundaria / Bach.", email: "carmenvalera@sanbuenaventura.org", info: "Orientación" },
+  { name: "María Esperanza García Moreda", etapa: "Secundaria / Bach.", email: "esperanzagarcia@sanbuenaventura.org", info: "2º BTO B" },
+  { name: "María Laura Blanco Pérez", etapa: "Secundaria / Bach.", email: "laurablanco@sanbuenaventura.org", info: "3º ESO A" },
+  { name: "María Lourdes Díez Pérez", etapa: "Secundaria / Bach.", email: "lourdesdiez@sanbuenaventura.org", info: "1º BTO B" },
+  { name: "Olga Almazán Pardo", etapa: "Secundaria / Bach.", email: "olgaalmazan@sanbuenaventura.org", info: "2º ESO A" },
+  { name: "Philippe Georges Saint-Mard", etapa: "Secundaria / Bach.", email: "philippesaintmard@sanbuenaventura.org", info: "Francés" },
+  { name: "Sergio Acevedo Trapote", etapa: "Secundaria / Bach.", email: "sergioacevedo@sanbuenaventura.org", info: "1º ESO A" },
+  { name: "Soledad Garrido García-Calvo", etapa: "Secundaria / Bach.", email: "soledadgarrido@sanbuenaventura.org", info: "Lengua" },
+  { name: "Tania Martín Almendra", etapa: "Secundaria / Bach.", email: "taniamartin@sanbuenaventura.org", info: "Ed. Física" },
+  { name: "Vicente Hernández Gordo", etapa: "Secundaria / Bach.", email: "vicentehernandez@sanbuenaventura.org", info: "Geografía e Historia" },
+
+  // PAS / Administración / Otros
+  { name: "Administración / Secretaría", etapa: "PAS / Otro", email: "administracion@sanbuenaventura.org" },
+  { name: "Portería / Recepción", etapa: "PAS / Otro", email: "administracion@sanbuenaventura.org" }
+];
+
+// --- Script de Google Apps Script para envío automático desde @sanbuenaventura.org ---
+const GOOGLE_APPS_SCRIPT_CODE = `function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var to = data.to;
+    if (!to) return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Sin destinatario" })).setMimeType(ContentService.MimeType.JSON);
+
+    var isResolved = data.type === "resolved";
+    var subject = isResolved
+      ? "✅ Incidencia Resuelta: " + data.room + " (" + data.building + ")"
+      : "📋 Incidencia Registrada: " + data.room + " (" + data.building + ")";
+
+    var badgeColor = isResolved ? "#059669" : "#4f46e5";
+    var statusText = isResolved ? "RESUELTA" : "RECIBIDA Y PENDIENTE";
+
+    var htmlBody = "<div style='font-family:sans-serif;max-width:560px;margin:0 auto;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden'>" +
+      "<div style='background:" + badgeColor + ";color:#fff;padding:20px 24px'>" +
+        "<div style='font-size:11px;text-transform:uppercase;letter-spacing:1px;opacity:0.9'>Colegio San Buenaventura • Servicio Técnico</div>" +
+        "<h2 style='margin:6px 0 0;font-size:20px'>" + (isResolved ? "¡Tu incidencia ha sido resuelta!" : "Hemos recibido tu parte de incidencia") + "</h2>" +
+      "</div>" +
+      "<div style='padding:24px;color:#1e293b;font-size:14px;line-height:1.6'>" +
+        "<p>Hola <strong>" + (data.reporterName || "") + "</strong>,</p>" +
+        "<p>" + (isResolved
+          ? "El equipo técnico ha marcado como <strong>resuelta</strong> la incidencia que comunicaste:"
+          : "Se ha registrado correctamente tu aviso en el sistema del colegio con los siguientes datos:") + "</p>" +
+        "<div style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin:16px 0'>" +
+          "<div><strong>Estado:</strong> <span style='color:" + badgeColor + ";font-weight:bold'>" + statusText + "</span></div>" +
+          "<div><strong>Departamento:</strong> " + (data.category === "it" ? "Informática y TIC" : "Mantenimiento e Instalaciones") + "</div>" +
+          "<div><strong>Ubicación:</strong> " + data.building + (data.floor && data.floor !== "N/A" ? " • " + data.floor : "") + " • <strong>" + data.room + "</strong></div>" +
+          "<div><strong>Descripción:</strong> " + data.description + "</div>" +
+          (isResolved && data.resolutionNote ? "<div style='margin-top:10px;padding-top:10px;border-top:1px solid #cbd5e1;color:#065f46'><strong>Nota de resolución:</strong> " + data.resolutionNote + "</div>" : "") +
+        "</div>" +
+        "<p style='font-size:12px;color:#64748b;margin-top:20px'>Colegio San Buenaventura • Gestión de Incidencias</p>" +
+      "</div>" +
+    "</div>";
+
+    MailApp.sendEmail({
+      to: to,
+      subject: subject,
+      htmlBody: htmlBody
+    });
+
+    return ContentService.createTextOutput(JSON.stringify({ ok: true })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err) })).setMimeType(ContentService.MimeType.JSON);
+  }
+}`;
 
 // --- UTILIDAD: Compresor de Imágenes ---
 const compressImage = (base64Str: string, maxWidth = 800, quality = 0.6): Promise<string> => {
@@ -270,7 +417,6 @@ const getRelativeTime = (timestamp?: { seconds: number } | null): string => {
 const getRoomsForBuildingAndFloor = (building: string, floor: string): string[] => {
   if (building === "Otros Espacios Comunes") return COMMON_SPACES_LIST;
 
-  // 2. Pabellón Principal (Portería, Dirección, Bach.)
   if (building === "Pabellón Principal (Portería, Dirección, Bach.)") {
     if (floor === "Planta Baja") {
       return [
@@ -294,7 +440,6 @@ const getRoomsForBuildingAndFloor = (building: string, floor: string): string[] 
     }
   }
 
-  // 3. Pabellón 1 (3º y 4º ESO)
   if (building === "Pabellón 1 (3º y 4º ESO)") {
     if (floor === "Planta Baja") {
       return [
@@ -317,7 +462,6 @@ const getRoomsForBuildingAndFloor = (building: string, floor: string): string[] 
     }
   }
 
-  // 4. Pabellón 2 (1º y 2º ESO)
   if (building === "Pabellón 2 (1º y 2º ESO)") {
     if (floor === "Planta Baja") {
       return [
@@ -339,7 +483,6 @@ const getRoomsForBuildingAndFloor = (building: string, floor: string): string[] 
     }
   }
 
-  // 5. Pabellón 3 (5 años, 1º y 2º EP)
   if (building === "Pabellón 3 (5 años, 1º y 2º EP)") {
     if (floor === "Planta Baja") {
       return [
@@ -361,7 +504,7 @@ const getRoomsForBuildingAndFloor = (building: string, floor: string): string[] 
     }
   }
 
-  // 6. Pirámide (3º-6º EP) -> Actualizado:
+  // Pirámide (3º-6º EP):
   // 1ª Planta: todo 3º, 4ºA y 4ºC (+ aulas específicas)
   // 2ª Planta: 4ºB, Sala PT y todo 5º y 6º
   if (building === "Pirámide (3º-6º EP)") {
@@ -383,7 +526,6 @@ const getRoomsForBuildingAndFloor = (building: string, floor: string): string[] 
     }
   }
 
-  // 7. Pabellón 3 y 4 años
   if (building === "Pabellón 3 y 4 años") {
     if (floor === "Planta Baja") {
       return [
@@ -620,13 +762,12 @@ const Stepper: React.FC<StepperProps> = ({ currentStep, formData, onGoToStep }) 
   const steps = [
     { num: 1, label: "Categoría", done: Boolean(formData.category) },
     { num: 2, label: "Ubicación", done: Boolean(formData.building && formData.room) },
-    { num: 3, label: "Detalles", done: Boolean(formData.description && formData.reporterName) }
+    { num: 3, label: "Detalles y Envío", done: Boolean(formData.description && formData.reporterName && formData.reporterEmail) }
   ];
 
   return (
     <div className="mb-7">
       <div className="flex items-center justify-between relative">
-        {/* Línea de fondo */}
         <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-0.5 bg-slate-200 -z-0 mx-8" />
         <div
           className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-indigo-600 -z-0 mx-8 transition-all duration-500"
@@ -850,10 +991,6 @@ const StepLocation: React.FC<StepLocationProps> = ({ formData, updateForm, handl
     ? Boolean(formData.building && formData.room)
     : Boolean(formData.building && formData.floor && formData.room);
 
-  const handleSelectRoom = (r: string) => {
-    updateForm('room', r);
-  };
-
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
       <div className="flex items-center justify-between">
@@ -951,7 +1088,7 @@ const StepLocation: React.FC<StepLocationProps> = ({ formData, updateForm, handl
                 <button
                   type="button"
                   key={r}
-                  onClick={() => handleSelectRoom(r)}
+                  onClick={() => updateForm('room', r)}
                   className={`p-3 text-xs font-bold border rounded-xl transition-all flex items-center justify-between gap-1.5 text-left ${
                     active
                       ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20'
@@ -988,7 +1125,7 @@ const StepLocation: React.FC<StepLocationProps> = ({ formData, updateForm, handl
   );
 };
 
-// --- Paso 3: Detalles ---
+// --- Paso 3: Detalles y Selección de Docente con Correo ---
 interface StepDetailsProps {
   formData: IncidentFormData;
   updateForm: <K extends keyof IncidentFormData>(field: K, value: IncidentFormData[K]) => void;
@@ -1012,7 +1149,11 @@ const StepDetails: React.FC<StepDetailsProps> = ({
 }) => {
   const issues = formData.category ? (COMMON_ISSUES[formData.category] || []) : [];
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const [showCamera, setShowCamera] = useState(false);
+  const [showTeacherList, setShowTeacherList] = useState(false);
+  const [teacherSearch, setTeacherSearch] = useState('');
+  const [selectedStageFilter, setSelectedStageFilter] = useState<string>('Todos');
 
   const handleQuickTag = (text: string) => updateForm('description', text);
 
@@ -1021,7 +1162,38 @@ const StepDetails: React.FC<StepDetailsProps> = ({
     setShowCamera(false);
   };
 
+  // Cerrar desplegable de profesores al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowTeacherList(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredTeachers = useMemo(() => {
+    const q = teacherSearch.toLowerCase().trim();
+    return SCHOOL_STAFF_DIRECTORY.filter(t => {
+      const matchStage = selectedStageFilter === 'Todos' || t.etapa === selectedStageFilter;
+      const matchQuery = !q ||
+        t.name.toLowerCase().includes(q) ||
+        t.email.toLowerCase().includes(q) ||
+        (t.info && t.info.toLowerCase().includes(q));
+      return matchStage && matchQuery;
+    });
+  }, [teacherSearch, selectedStageFilter]);
+
+  const handleSelectTeacher = (teacher: TeacherDirectoryEntry) => {
+    updateForm('reporterName', teacher.name);
+    updateForm('reporterEmail', teacher.email);
+    setShowTeacherList(false);
+    setTeacherSearch('');
+  };
+
   const isIT = formData.category === 'it';
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.reporterEmail.trim());
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -1104,7 +1276,130 @@ const StepDetails: React.FC<StepDetailsProps> = ({
         />
       </div>
 
-      {/* Evidencia y Nombre del profesor */}
+      {/* Bloque Docente + Correo Institucional para avisos */}
+      <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 space-y-3.5" ref={dropdownRef}>
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-indigo-900">
+            <User size={14} className="text-indigo-600" /> Profesor/a que reporta y correo de aviso <span className="text-rose-500">*</span>
+          </label>
+          <span className="text-[11px] font-semibold text-indigo-600 flex items-center gap-1">
+            <Bell size={12} /> Recibirás aviso al enviarse y al resolverse
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Selector / Buscador del Claustro */}
+          <div className="relative">
+            <label className="block text-[11px] font-bold text-slate-600 mb-1">Nombre del docente o personal</label>
+            <div className="relative">
+              <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Elige de la lista o escribe tu nombre..."
+                value={formData.reporterName}
+                onFocus={() => setShowTeacherList(true)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  updateForm('reporterName', val);
+                  setTeacherSearch(val);
+                  setShowTeacherList(true);
+                  const exactMatch = SCHOOL_STAFF_DIRECTORY.find(t => t.name.toLowerCase() === val.toLowerCase().trim());
+                  if (exactMatch) {
+                    updateForm('reporterEmail', exactMatch.email);
+                  }
+                }}
+                className="w-full pl-9 pr-9 py-2.5 bg-white border border-slate-200 focus:border-indigo-500 rounded-xl text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/15"
+              />
+              <button
+                type="button"
+                onClick={() => setShowTeacherList(!showTeacherList)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 p-1"
+                title="Mostrar listado del claustro"
+              >
+                <ChevronDown size={15} />
+              </button>
+            </div>
+
+            {/* Desplegable con los profesores del colegio */}
+            {showTeacherList && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-2xl z-40 max-h-72 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                <div className="p-2 bg-slate-50 border-b border-slate-100 space-y-2">
+                  <div className="relative">
+                    <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Filtrar claustro por nombre o curso..."
+                      value={teacherSearch}
+                      onChange={(e) => setTeacherSearch(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="flex gap-1 overflow-x-auto pb-0.5">
+                    {['Todos', 'Infantil', 'Primaria', 'Secundaria / Bach.', 'PAS / Otro'].map(st => (
+                      <button
+                        type="button"
+                        key={st}
+                        onClick={() => setSelectedStageFilter(st)}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0 transition-colors ${
+                          selectedStageFilter === st ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border border-slate-200'
+                        }`}
+                      >
+                        {st}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="overflow-y-auto divide-y divide-slate-100">
+                  {filteredTeachers.length === 0 ? (
+                    <div className="p-3 text-center text-xs text-slate-400">
+                      No está en la lista. Puedes dejar escrito tu nombre y correo manualmente.
+                    </div>
+                  ) : (
+                    filteredTeachers.map((t) => (
+                      <button
+                        type="button"
+                        key={t.name}
+                        onClick={() => handleSelectTeacher(t)}
+                        className="w-full px-3.5 py-2.5 text-left hover:bg-indigo-50/70 flex items-center justify-between gap-2 transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-slate-800 truncate">{t.name}</div>
+                          <div className="text-[10px] text-slate-500 truncate">{t.email}</div>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 shrink-0">
+                          {t.info || t.etapa}
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Campo Correo Electrónico */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-600 mb-1">Correo electrónico para notificaciones</label>
+            <div className="relative">
+              <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="email"
+                placeholder="tucorreo@sanbuenaventura.org"
+                value={formData.reporterEmail}
+                onChange={(e) => updateForm('reporterEmail', e.target.value)}
+                className={`w-full pl-9 pr-3 py-2.5 bg-white border rounded-xl text-xs font-bold text-slate-800 outline-none focus:ring-2 transition-all ${
+                  formData.reporterEmail && !isValidEmail
+                    ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/15'
+                    : 'border-slate-200 focus:border-indigo-500 focus:ring-indigo-500/15'
+                }`}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Evidencia y Prioridad */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500">
@@ -1150,75 +1445,55 @@ const StepDetails: React.FC<StepDetailsProps> = ({
           )}
           <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleImageUpload} />
         </div>
-        
+
+        {/* Selector de Prioridad */}
         <div className="space-y-2">
           <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500">
-            Reportado por <span className="text-rose-500">*</span>
+            Nivel de Urgencia
           </label>
-          <div className="relative">
-            <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Tu nombre (se recordará)" 
-              value={formData.reporterName} 
-              onChange={(e) => updateForm('reporterName', e.target.value)} 
-              className={`w-full pl-10 pr-3 py-3 border rounded-2xl text-sm font-medium bg-slate-50/70 focus:bg-white outline-none focus:ring-4 transition-all ${
-                !formData.reporterName.trim()
-                  ? 'border-amber-300 focus:border-amber-500 focus:ring-amber-500/10'
-                  : 'border-slate-200 focus:border-indigo-500 focus:ring-indigo-500/10'
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => updateForm('priority', 'normal')}
+              className={`p-3 rounded-2xl border text-left transition-all flex items-center gap-2.5 ${
+                formData.priority === 'normal'
+                  ? 'bg-emerald-50/90 border-emerald-500 text-emerald-900 ring-2 ring-emerald-500/15'
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Selector de Prioridad */}
-      <div className="space-y-2">
-        <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500">
-          Nivel de Urgencia
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => updateForm('priority', 'normal')}
-            className={`p-3 rounded-2xl border text-left transition-all flex items-center gap-3 ${
-              formData.priority === 'normal'
-                ? 'bg-emerald-50/90 border-emerald-500 text-emerald-900 ring-2 ring-emerald-500/15'
-                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
-              formData.priority === 'normal' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
-            }`}>
-              {formData.priority === 'normal' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-            </div>
-            <div>
-              <div className="text-xs font-extrabold">Prioridad Normal</div>
-              <div className="text-[11px] opacity-75">Para revisión en el parte habitual</div>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => updateForm('priority', 'urgente')}
-            className={`p-3 rounded-2xl border text-left transition-all flex items-center gap-3 ${
-              formData.priority === 'urgente'
-                ? 'bg-rose-50/90 border-rose-500 text-rose-900 ring-2 ring-rose-500/15'
-                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
-              formData.priority === 'urgente' ? 'border-rose-600 bg-rose-600' : 'border-slate-300'
-            }`}>
-              {formData.priority === 'urgente' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-            </div>
-            <div>
-              <div className="text-xs font-extrabold flex items-center gap-1">
-                Urgente <AlertCircle size={12} className="text-rose-600" />
+            >
+              <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                formData.priority === 'normal' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
+              }`}>
+                {formData.priority === 'normal' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
               </div>
-              <div className="text-[11px] opacity-75">Impide dar clase o supone un riesgo</div>
-            </div>
-          </button>
+              <div className="min-w-0">
+                <div className="text-xs font-extrabold">Normal</div>
+                <div className="text-[10px] opacity-75 truncate">Parte habitual</div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => updateForm('priority', 'urgente')}
+              className={`p-3 rounded-2xl border text-left transition-all flex items-center gap-2.5 ${
+                formData.priority === 'urgente'
+                  ? 'bg-rose-50/90 border-rose-500 text-rose-900 ring-2 ring-rose-500/15'
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                formData.priority === 'urgente' ? 'border-rose-600 bg-rose-600' : 'border-slate-300'
+              }`}>
+                {formData.priority === 'urgente' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-extrabold flex items-center gap-1">
+                  Urgente <AlertCircle size={11} className="text-rose-600 shrink-0" />
+                </div>
+                <div className="text-[10px] opacity-75 truncate">Impide dar clase</div>
+              </div>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1241,10 +1516,10 @@ const StepDetails: React.FC<StepDetailsProps> = ({
           <button 
             type="button"
             onClick={handleSubmit} 
-            disabled={!formData.description.trim() || !formData.reporterName.trim() || isSubmitting} 
+            disabled={!formData.description.trim() || !formData.reporterName.trim() || !isValidEmail || isSubmitting} 
             className="flex-1 py-3.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-2xl shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 font-extrabold text-sm disabled:opacity-40 disabled:shadow-none transition-all active:scale-[0.99]"
           >
-            {isSubmitting ? 'Registrando incidencia...' : 'Registrar Incidencia'} <Send size={16} />
+            {isSubmitting ? 'Registrando y enviando aviso...' : 'Registrar Incidencia'} <Send size={16} />
           </button>
         </div>
       </div>
@@ -1401,11 +1676,13 @@ interface IncidentsListProps {
   isAdmin: boolean;
   exportToCSV: () => void;
   setActiveTab: (tab: TabType) => void;
-  initiateResolve: (id: string) => void;
+  initiateResolve: (incident: Incident) => void;
   reopenIncident: (id: string) => void;
   initiateDelete: (id: string) => void;
   onPreviewImage: (imageUrl: string, description: string) => void;
   onOpenQrModal: (building: string, floor: string, room: string) => void;
+  onOpenEmailSettings: () => void;
+  hasWebhookConfigured: boolean;
 }
 
 const IncidentsList: React.FC<IncidentsListProps> = ({ 
@@ -1420,7 +1697,9 @@ const IncidentsList: React.FC<IncidentsListProps> = ({
   exportToCSV, setActiveTab,
   initiateResolve, reopenIncident, initiateDelete,
   onPreviewImage,
-  onOpenQrModal
+  onOpenQrModal,
+  onOpenEmailSettings,
+  hasWebhookConfigured
 }) => {
   if (loading) {
     return (
@@ -1445,7 +1724,8 @@ const IncidentsList: React.FC<IncidentsListProps> = ({
       (i.description || '').toLowerCase().includes(query) || 
       (i.room || '').toLowerCase().includes(query) ||
       (i.building || '').toLowerCase().includes(query) ||
-      (i.reporterName || '').toLowerCase().includes(query);
+      (i.reporterName || '').toLowerCase().includes(query) ||
+      (i.reporterEmail || '').toLowerCase().includes(query);
     const matchBuilding = filterBuilding === 'all' || i.building === filterBuilding;
     const matchMine = !onlyMyIncidents || Boolean(savedName && i.reporterName?.toLowerCase().trim() === savedName.toLowerCase().trim());
     
@@ -1520,7 +1800,7 @@ const IncidentsList: React.FC<IncidentsListProps> = ({
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Buscar por avería, aula, profesor..." 
+              placeholder="Buscar por avería, aula, profesor o correo..." 
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
               className="w-full pl-10 pr-8 py-2.5 text-sm bg-slate-50 focus:bg-white border border-slate-200 focus:border-indigo-500 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
@@ -1559,9 +1839,9 @@ const IncidentsList: React.FC<IncidentsListProps> = ({
         </div>
       </div>
       
-      {/* Herramientas de Admin (Exportar y Stats) */}
+      {/* Herramientas de Admin (Exportar, Stats y Configuración de Correo) */}
       {isAdmin && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <button 
             type="button"
             onClick={exportToCSV}
@@ -1575,6 +1855,17 @@ const IncidentsList: React.FC<IncidentsListProps> = ({
             className="py-3 px-4 bg-indigo-50 hover:bg-indigo-100/80 text-indigo-800 border border-indigo-200 rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 transition-colors shadow-2xs"
           >
             <BarChart3 size={15} /> Panel de Estadísticas
+          </button>
+          <button 
+            type="button"
+            onClick={onOpenEmailSettings}
+            className={`py-3 px-4 border rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 transition-colors shadow-2xs ${
+              hasWebhookConfigured
+                ? 'bg-blue-50 hover:bg-blue-100 text-blue-800 border-blue-200'
+                : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200'
+            }`}
+          >
+            <Mail size={15} /> {hasWebhookConfigured ? 'Avisos Email: Activos' : 'Configurar Avisos Email'}
           </button>
         </div>
       )}
@@ -1644,7 +1935,7 @@ const IncidentsList: React.FC<IncidentsListProps> = ({
                         {incident.status === 'pending' ? (
                           <button
                             type="button"
-                            onClick={() => initiateResolve(incident.id)}
+                            onClick={() => initiateResolve(incident)}
                             className="text-xs font-extrabold px-3.5 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 shadow-xs flex items-center gap-1 transition-colors"
                           >
                             <Check size={14} /> Resolver
@@ -1699,6 +1990,11 @@ const IncidentsList: React.FC<IncidentsListProps> = ({
                           <User size={11} className="text-slate-400" /> {incident.reporterName}
                         </span>
                       </>
+                    )}
+                    {incident.reporterEmail && (
+                      <span className="inline-flex items-center gap-1 text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md font-semibold text-[11px]">
+                        <Mail size={10} /> {incident.reporterEmail}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -1765,7 +2061,8 @@ export default function App() {
     description: '',
     priority: 'normal',
     imageData: null,
-    reporterName: ''
+    reporterName: '',
+    reporterEmail: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null); 
@@ -1783,7 +2080,13 @@ export default function App() {
 
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [resolveNote, setResolveNote] = useState('');
-  const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [resolvingIncident, setResolvingIncident] = useState<Incident | null>(null);
+  const [notifyReporterOnResolve, setNotifyReporterOnResolve] = useState(true);
+
+  // Configuración de Webhook de Correo Automático (guardado en Firestore)
+  const [emailWebhookUrl, setEmailWebhookUrl] = useState<string>('');
+  const [showEmailSettingsModal, setShowEmailSettingsModal] = useState(false);
+  const [webhookInput, setWebhookInput] = useState('');
 
   // Estados Modal Borrado
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -1805,7 +2108,7 @@ export default function App() {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage(prev => (prev === msg ? null : prev));
-    }, 3200);
+    }, 3500);
   }, []);
 
   // --- Check URL Params for Magic Link / QR ---
@@ -1845,14 +2148,21 @@ export default function App() {
     initAuth();
     const unsubscribe = onAuthStateChanged(auth, setUser);
     
-    const savedName = localStorage.getItem('school_reporter_name');
-    if (savedName) {
-      setFormData(prev => ({ ...prev, reporterName: savedName }));
+    const savedName = localStorage.getItem('school_reporter_name') || '';
+    const savedEmail = localStorage.getItem('school_reporter_email') || '';
+    if (savedName || savedEmail) {
+      const matchedTeacher = SCHOOL_STAFF_DIRECTORY.find(t => t.name.toLowerCase() === savedName.toLowerCase().trim());
+      setFormData(prev => ({
+        ...prev,
+        reporterName: savedName,
+        reporterEmail: savedEmail || matchedTeacher?.email || ''
+      }));
     }
 
     return () => unsubscribe();
   }, []);
 
+  // Suscripción a incidencias y configuración de correo en Firestore
   useEffect(() => {
     if (!user) return;
     const collectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'incidencias_escolares');
@@ -1862,8 +2172,60 @@ export default function App() {
       setIncidents(docs);
       setLoading(false);
     }, (error) => console.error(error));
+
+    // Cargar URL del webhook de correo desde Firestore (si existe)
+    const settingsRef = doc(db, 'artifacts', appId, 'public', 'data', 'config_incidencias', 'email_settings');
+    getDoc(settingsRef).then(snap => {
+      if (snap.exists() && snap.data()?.webhookUrl) {
+        setEmailWebhookUrl(snap.data().webhookUrl);
+        setWebhookInput(snap.data().webhookUrl);
+      }
+    }).catch(() => {});
+
     return () => unsubscribe();
   }, [user]);
+
+  // Función para disparar notificación por correo vía Google Apps Script Webhook
+  const sendAutomatedEmail = async (payload: {
+    type: 'created' | 'resolved';
+    to: string;
+    reporterName: string;
+    category: string;
+    building: string;
+    floor: string;
+    room: string;
+    description: string;
+    priority: string;
+    resolutionNote?: string;
+  }): Promise<boolean> => {
+    if (!payload.to || !emailWebhookUrl.trim()) return false;
+    try {
+      await fetch(emailWebhookUrl.trim(), {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      return true;
+    } catch (err) {
+      console.error("Error enviando email automático:", err);
+      return false;
+    }
+  };
+
+  const saveEmailWebhookConfig = async () => {
+    try {
+      const trimmed = webhookInput.trim();
+      const settingsRef = doc(db, 'artifacts', appId, 'public', 'data', 'config_incidencias', 'email_settings');
+      await setDoc(settingsRef, { webhookUrl: trimmed, updatedAt: serverTimestamp() }, { merge: true });
+      setEmailWebhookUrl(trimmed);
+      setShowEmailSettingsModal(false);
+      showToast(trimmed ? "Webhook de correo automático guardado" : "Webhook de correo desactivado");
+    } catch (e) {
+      console.error(e);
+      showToast("No se pudo guardar la configuración");
+    }
+  };
 
   const handleNext = () => setStep(prev => prev + 1);
   const handleBack = () => setStep(prev => Math.max(1, prev - 1));
@@ -1905,20 +2267,36 @@ export default function App() {
     setSubmitError(null);
 
     const trimmedName = formData.reporterName.trim();
-    if (trimmedName) {
-      localStorage.setItem('school_reporter_name', trimmedName);
-    }
+    const trimmedEmail = formData.reporterEmail.trim().toLowerCase();
+
+    if (trimmedName) localStorage.setItem('school_reporter_name', trimmedName);
+    if (trimmedEmail) localStorage.setItem('school_reporter_email', trimmedEmail);
 
     try {
+      const emailSent = await sendAutomatedEmail({
+        type: 'created',
+        to: trimmedEmail,
+        reporterName: trimmedName,
+        category: formData.category,
+        building: formData.building,
+        floor: formData.floor,
+        room: formData.room,
+        description: formData.description.trim(),
+        priority: formData.priority
+      });
+
       const collectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'incidencias_escolares');
       await addDoc(collectionRef, {
         ...formData,
         description: formData.description.trim(),
         reporterName: trimmedName,
+        reporterEmail: trimmedEmail,
         status: 'pending',
         createdAt: serverTimestamp(),
-        authorId: user.uid
+        authorId: user.uid,
+        emailNotifiedCreated: emailSent
       });
+
       setStep(4); 
       setTimeout(() => {
         setStep(1);
@@ -1930,12 +2308,13 @@ export default function App() {
           description: '',
           priority: 'normal',
           imageData: null,
-          reporterName: prev.reporterName
+          reporterName: prev.reporterName,
+          reporterEmail: prev.reporterEmail
         }));
         window.history.replaceState({}, document.title, window.location.pathname);
         setActiveTab('list');
         setIsSubmitting(false);
-      }, 1800);
+      }, 2000);
     } catch (error) {
       console.error(error);
       setSubmitError("Error al enviar. ¿Es la foto muy grande o hay problemas de conexión?");
@@ -1944,7 +2323,7 @@ export default function App() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.description.trim() || !formData.reporterName.trim()) return;
+    if (!formData.description.trim() || !formData.reporterName.trim() || !formData.reporterEmail.trim()) return;
     setSubmitError(null);
 
     // --- DETECCIÓN DEL HUEVO DE PASCUA ---
@@ -1985,24 +2364,59 @@ export default function App() {
     }
   };
 
-  const initiateResolve = (id: string) => {
-    setResolvingId(id);
+  const initiateResolve = (incident: Incident) => {
+    setResolvingIncident(incident);
     setResolveNote('');
+    setNotifyReporterOnResolve(true);
     setShowResolveModal(true);
   };
 
   const confirmResolve = async () => {
-    if (!resolvingId) return;
+    if (!resolvingIncident) return;
     try {
-      const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'incidencias_escolares', resolvingId);
+      let emailSent = false;
+      const targetEmail = resolvingIncident.reporterEmail ||
+        SCHOOL_STAFF_DIRECTORY.find(t => t.name.toLowerCase() === (resolvingIncident.reporterName || '').toLowerCase().trim())?.email || '';
+
+      if (notifyReporterOnResolve && targetEmail) {
+        if (emailWebhookUrl.trim()) {
+          emailSent = await sendAutomatedEmail({
+            type: 'resolved',
+            to: targetEmail,
+            reporterName: resolvingIncident.reporterName,
+            category: resolvingIncident.category,
+            building: resolvingIncident.building,
+            floor: resolvingIncident.floor,
+            room: resolvingIncident.room,
+            description: resolvingIncident.description,
+            priority: resolvingIncident.priority,
+            resolutionNote: resolveNote.trim() || 'Incidencia solucionada por el equipo técnico.'
+          });
+        } else {
+          // Si aún no hay webhook automático configurado, preparamos aviso por correo institucional
+          const subject = encodeURIComponent(`✅ Incidencia Resuelta: ${resolvingIncident.room} (${BUILDING_METADATA[resolvingIncident.building]?.shortTitle || resolvingIncident.building})`);
+          const body = encodeURIComponent(
+            `Hola ${resolvingIncident.reporterName || ''},\n\n` +
+            `Te informamos de que la incidencia que reportaste ya ha sido RESUELTA:\n\n` +
+            `• Ubicación: ${resolvingIncident.building}${resolvingIncident.floor && resolvingIncident.floor !== 'N/A' ? ' - ' + resolvingIncident.floor : ''} (${resolvingIncident.room})\n` +
+            `• Avería: ${resolvingIncident.description}\n` +
+            `• Solución: ${resolveNote.trim() || 'Solucionado por el equipo técnico.'}\n\n` +
+            `Un saludo,\nEquipo de Mantenimiento y TIC - Colegio San Buenaventura`
+          );
+          window.open(`mailto:${targetEmail}?subject=${subject}&body=${body}`, '_blank');
+        }
+      }
+
+      const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'incidencias_escolares', resolvingIncident.id);
       await updateDoc(docRef, {
         status: 'resolved',
         resolutionNote: resolveNote.trim(),
-        resolvedAt: serverTimestamp()
+        resolvedAt: serverTimestamp(),
+        emailNotifiedResolved: emailSent
       });
       setShowResolveModal(false);
-      setResolvingId(null);
-      showToast("Incidencia marcada como resuelta");
+      setResolvingIncident(null);
+      showToast(emailSent ? "Incidencia resuelta y correo enviado al docente" : "Incidencia marcada como resuelta");
     } catch (e) { console.error(e); }
   };
 
@@ -2040,10 +2454,11 @@ export default function App() {
   };
 
   const exportToCSV = () => {
-    const headers = ["Fecha", "Solicitante", "Estado", "Categoría", "Prioridad", "Edificio", "Planta", "Aula", "Descripción", "Nota Resolución"];
+    const headers = ["Fecha", "Solicitante", "Correo", "Estado", "Categoría", "Prioridad", "Edificio", "Planta", "Aula", "Descripción", "Nota Resolución"];
     const rows = incidents.map(i => [
       i.createdAt?.seconds ? new Date(i.createdAt.seconds * 1000).toLocaleDateString('es-ES') : '',
       `"${(i.reporterName || 'Anónimo').replace(/"/g, '""')}"`,
+      `"${(i.reporterEmail || '').replace(/"/g, '""')}"`,
       i.status === 'resolved' ? 'Resuelto' : 'Pendiente',
       i.category === 'it' ? 'Informática' : 'Mantenimiento',
       i.priority,
@@ -2075,6 +2490,11 @@ export default function App() {
       </div>
     );
   }
+
+  const resolvingTargetEmail = resolvingIncident
+    ? (resolvingIncident.reporterEmail ||
+      SCHOOL_STAFF_DIRECTORY.find(t => t.name.toLowerCase() === (resolvingIncident.reporterName || '').toLowerCase().trim())?.email || '')
+    : '';
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-12 relative">
@@ -2217,8 +2637,9 @@ export default function App() {
                   <CheckCircle2 size={42} className="text-emerald-600" />
                 </div>
                 <h2 className="text-2xl font-extrabold text-slate-900">¡Incidencia registrada!</h2>
-                <p className="text-sm text-slate-500 mt-1 max-w-xs">
-                  El equipo de {formData.category === 'it' ? 'Informática' : 'Mantenimiento'} ya tiene disponible el aviso.
+                <p className="text-sm text-slate-500 mt-1 max-w-sm">
+                  El equipo de {formData.category === 'it' ? 'Informática' : 'Mantenimiento'} ya tiene el aviso
+                  {formData.reporterEmail ? ` y hemos asociado tu correo (${formData.reporterEmail}) para notificarte cuando se resuelva.` : '.'}
                 </p>
               </div>
             )}
@@ -2247,6 +2668,8 @@ export default function App() {
             initiateDelete={initiateDelete}
             onPreviewImage={(url, title) => setPreviewModalData({ url, title })}
             onOpenQrModal={handleOpenQrModal}
+            onOpenEmailSettings={() => setShowEmailSettingsModal(true)}
+            hasWebhookConfigured={Boolean(emailWebhookUrl.trim())}
           />
         )}
 
@@ -2386,6 +2809,90 @@ export default function App() {
         </div>
       )}
 
+      {/* Modal Configuración de Correo Automático (Google Apps Script) */}
+      {showEmailSettingsModal && (
+        <div
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setShowEmailSettingsModal(false)}
+        >
+          <div
+            className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <Mail size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900">Avisos Automáticos por Correo</h3>
+                  <p className="text-xs text-slate-500">Envía emails al registrar y al resolver cada incidencia</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setShowEmailSettingsModal(false)} className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600">
+                URL de tu Web App de Google Apps Script
+              </label>
+              <input
+                type="url"
+                placeholder="https://script.google.com/macros/s/.../exec"
+                value={webhookInput}
+                onChange={(e) => setWebhookInput(e.target.value)}
+                className="w-full p-3 bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-2xl text-xs font-mono outline-none"
+              />
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Al pegar aquí la URL, la app enviará automáticamente desde vuestro Google Workspace un correo HTML de confirmación cuando el profesor cree el parte y otro cuando lo marques como resuelto.
+              </p>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2.5 text-xs text-slate-600">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-slate-800">¿Cómo crear la URL en 1 minuto (gratis)?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_CODE).then(() => {
+                      showToast("Código de Google Apps Script copiado");
+                    });
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-700"
+                >
+                  <Copy size={12} /> Copiar código del Script
+                </button>
+              </div>
+              <ol className="list-decimal list-inside space-y-1 text-[11px] text-slate-600">
+                <li>Abre <strong>script.google.com</strong> con la cuenta del colegio y crea un <em>Nuevo proyecto</em>.</li>
+                <li>Pega el código (botón <strong>Copiar código del Script</strong> de arriba) y dale a <strong>Implementar &gt; Nueva implementación</strong>.</li>
+                <li>Elige tipo <strong>Aplicación web</strong>, ejecutar como <em>Yo</em> y acceso <em>Cualquier usuario</em>.</li>
+                <li>Copia la URL terminada en <code>/exec</code> y pégala arriba.</li>
+              </ol>
+            </div>
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowEmailSettingsModal(false)}
+                className="flex-1 py-3 border border-slate-200 rounded-2xl text-xs font-bold text-slate-600 hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={saveEmailWebhookConfig}
+                className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-extrabold shadow-md shadow-indigo-500/20"
+              >
+                Guardar configuración
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Login Admin */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
@@ -2415,21 +2922,41 @@ export default function App() {
       )}
 
       {/* Modal Resolver Incidencia */}
-      {showResolveModal && (
+      {showResolveModal && resolvingIncident && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 w-full max-w-sm animate-in zoom-in-95 shadow-2xl border border-slate-200">
             <h3 className="text-lg font-extrabold text-slate-900 mb-1">Resolver Incidencia</h3>
-            <p className="text-xs text-slate-500 mb-4">Indica brevemente la actuación realizada (opcional):</p>
+            <p className="text-xs text-slate-500 mb-4">
+              {resolvingIncident.room} • {resolvingIncident.description}
+            </p>
             <textarea
               value={resolveNote}
               onChange={e => setResolveNote(e.target.value)}
-              placeholder="Ej: Sustituido cable HDMI, cambiada luminaria, reparada cerradura..."
-              className="w-full p-3.5 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-2xl mb-4 h-24 text-sm outline-none"
+              placeholder="Nota de solución (ej: Sustituido cable HDMI, cambiada luminaria...)"
+              className="w-full p-3.5 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-2xl mb-3 h-24 text-sm outline-none"
               autoFocus
             />
+
+            {resolvingTargetEmail && (
+              <label className="flex items-start gap-2.5 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 mb-4 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notifyReporterOnResolve}
+                  onChange={(e) => setNotifyReporterOnResolve(e.target.checked)}
+                  className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500"
+                />
+                <div className="text-xs leading-snug">
+                  <span className="font-bold text-emerald-950 block">Enviar aviso de resolución al docente</span>
+                  <span className="text-[11px] text-emerald-700">{resolvingTargetEmail}</span>
+                </div>
+              </label>
+            )}
+
             <div className="flex gap-2.5">
               <button type="button" onClick={() => setShowResolveModal(false)} className="flex-1 py-3 border border-slate-200 rounded-2xl text-xs font-bold text-slate-600">Cancelar</button>
-              <button type="button" onClick={confirmResolve} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-extrabold shadow-md shadow-emerald-500/20">Confirmar</button>
+              <button type="button" onClick={confirmResolve} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-extrabold shadow-md shadow-emerald-500/20">
+                Confirmar
+              </button>
             </div>
           </div>
         </div>
@@ -2479,7 +3006,7 @@ export default function App() {
                   setShowEasterEgg(false);
                   setStep(1);
                   setFormData(prev => ({
-                    category: '', building: '', floor: '', room: '', description: '', priority: 'normal', imageData: null, reporterName: prev.reporterName
+                    category: '', building: '', floor: '', room: '', description: '', priority: 'normal', imageData: null, reporterName: prev.reporterName, reporterEmail: prev.reporterEmail
                   }));
                 }}
                 className="px-6 py-2.5 border border-white/30 text-white/70 hover:text-white hover:border-white rounded-full transition-all text-sm"
